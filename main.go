@@ -22,6 +22,8 @@ import (
 	"github.com/skipor/gmg/pkg/gogen"
 )
 
+const gmgVersion = "v0.2.0"
+
 func main() {
 	env := RealEnvironment()
 	exitCode := Main(env)
@@ -30,7 +32,7 @@ func main() {
 
 func Main(env *Environment) int {
 	params, err := LoadParams(env)
-	if errors.Is(err, pflag.ErrHelp) {
+	if errors.Is(err, ErrExitZero) {
 		return 0
 	}
 	if err != nil {
@@ -81,6 +83,8 @@ func RealEnvironment() *Environment {
 	}
 }
 
+var ErrExitZero = errors.New("should exit with zero code")
+
 func LoadParams(env *Environment) (*Params, error) {
 	fs := pflag.NewFlagSet("gmg", pflag.ContinueOnError)
 	fs.PrintDefaults()
@@ -94,10 +98,11 @@ func LoadParams(env *Environment) (*Params, error) {
 		_, _ = b.WriteTo(env.Stderr)
 	}
 	var (
-		pkg   string
-		src   string
-		dst   string
-		debug bool
+		pkg     string
+		src     string
+		dst     string
+		debug   bool
+		version bool
 	)
 	fs.StringVarP(&src, "src", "s", ".",
 		"Source Go package to search for interfaces. Absolute or relative.\n"+
@@ -126,10 +131,17 @@ func LoadParams(env *Environment) (*Params, error) {
 			"	mocks_* # mockgen style\n"+
 			"	*mocks # mockery style\n")
 	fs.BoolVar(&debug, "debug", false, "Verbose debug logging.")
-
+	fs.BoolVar(&version, "version", false, "Show version and exit.")
 	err := fs.Parse(env.Args)
 	if err != nil {
+		if errors.Is(err, pflag.ErrHelp) {
+			return nil, ErrExitZero
+		}
 		return nil, fmt.Errorf("flags parse: %w", err)
+	}
+	if version {
+		_, _ = fmt.Fprintf(env.Stderr, "gmg %s\n", gmgVersion)
+		return nil, ErrExitZero
 	}
 
 	if strings.HasSuffix(src, "/...") {
