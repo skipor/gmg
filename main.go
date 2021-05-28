@@ -22,7 +22,7 @@ import (
 	"github.com/skipor/gmg/pkg/gogen"
 )
 
-const gmgVersion = "v0.2.0"
+const gmgVersion = "v0.3.0"
 
 func main() {
 	env := RealEnvironment()
@@ -115,21 +115,21 @@ func LoadParams(env *Environment) (*Params, error) {
 	)
 	fs.StringVarP(&dst, "dst", "d", "./mocks",
 		"Destination directory or file relative path or pattern.\n"+
-			"'*' in directory path will be replaced with the source package name.\n"+
-			"'*' in file name will be replaced with snake case interface name.\n"+
-			"If no file name pattern specified, then '*.go' used by default.\n"+
+			"'{}' in directory path will be replaced with the source package name.\n"+
+			"'{}' in file name will be replaced with snake case interface name.\n"+
+			"If no file name pattern specified, then '{}.go' used by default.\n"+
 			"Examples:\n"+
 			"	./mocks\n"+
-			"	./*mocks\n"+
-			"	./mocks/*_gomock.go\n"+
+			"	./{}mocks\n"+
+			"	./mocks/{}_gomock.go\n"+
 			"	./mocks_test.go # All mocks will be put to single file.\n",
 	)
-	fs.StringVarP(&pkg, "pkg", "p", "mocks_*",
+	fs.StringVarP(&pkg, "pkg", "p", "mocks_{}",
 		"Package name in generated files.\n"+
-			"'*' will be replaced with source package name.\n"+
+			"'{}' will be replaced with source package name.\n"+
 			"Examples:\n"+
-			"	mocks_* # mockgen style\n"+
-			"	*mocks # mockery style\n")
+			"	mocks_{} # mockgen style\n"+
+			"	{}mocks # mockery style\n")
 	fs.BoolVar(&debug, "debug", false, "Verbose debug logging.")
 	fs.BoolVar(&version, "version", false, "Show version and exit.")
 	err := fs.Parse(env.Args)
@@ -149,6 +149,7 @@ func LoadParams(env *Environment) (*Params, error) {
 	}
 
 	encConf := zap.NewDevelopmentEncoderConfig()
+	encConf.TimeKey = ""
 	level := zapcore.WarnLevel
 	if debug {
 		level = zapcore.DebugLevel
@@ -174,6 +175,8 @@ func LoadParams(env *Environment) (*Params, error) {
 
 }
 
+const placeHolder = "{}"
+
 func run(env *Environment, params *Params) error {
 	log := params.Log
 
@@ -181,39 +184,53 @@ func run(env *Environment, params *Params) error {
 	if err != nil {
 		return fmt.Errorf("package '%s' load failed: %w", params.Source, err)
 	}
-
 	debugLogPkgs(log, pkgs)
-
-	pkg := pkgs[0] // TODO support both test packages too
-	// FIXME: fail in case of errors
-	log.Infof("Processing package: %s", pkg.ID)
+	if errNum := errorsNum(pkgs); errNum != 0 {
+		b := &bytes.Buffer{}
+		p := func(format string, a ...interface{}) { _, _ = fmt.Fprintf(b, format, a...) }
+		p("Packages loaded with %v errors. Generation may fail, if type information was not able to load.\n", errNum)
+		packages.Visit(pkgs, nil, func(pkg *packages.Package) {
+			for _, err := range pkg.Errors {
+				p("\t- %s\n", err)
+			}
+		})
+		log.Warnf(strings.TrimSpace(b.String()))
+	}
+	primaryPkg := pkgs[0]
+	log.Infof("Processing package: %s", primaryPkg.ID)
 
 	dstDir := strings.TrimPrefix(params.Destination, ".")
-	fileNamePattern := "*.go"
+	fileNamePattern := placeHolder + ".go"
 	if path.Ext(dstDir) == ".go" {
 		dstDir, fileNamePattern = path.Split(dstDir)
 	}
-	dstDir = strings.ReplaceAll(dstDir, "*", pkg.Name)
-	packageName := strings.ReplaceAll(params.Package, "*", pkg.Name)
-	importPath := gogen.ImportPath(path.Join(pkg.PkgPath, dstDir))
+	dstDir = strings.ReplaceAll(dstDir, placeHolder, primaryPkg.Name)
+	packageName := strings.ReplaceAll(params.Package, placeHolder, primaryPkg.Name)
+	importPath := gogen.ImportPath(path.Join(primaryPkg.PkgPath, dstDir))
 
 	var opts []gogen.Option
-	if pkg.Module != nil {
-		opts = append(opts, gogen.ModulePath(pkg.Module.Path))
+	if primaryPkg.Module != nil {
+		opts = append(opts, gogen.ModulePath(primaryPkg.Module.Path))
 	}
 	g := gogen.NewGenerator(opts...)
 
-	isSingleFile := !strings.Contains(fileNamePattern, "*")
+	isSingleFile := !strings.Contains(fileNamePattern, placeHolder)
 	var singleFile *gogen.File
 	if isSingleFile {
 		singleFile = g.NewFile(fileNamePattern, importPath)
-		genFileHead(singleFile, packageName, pkg.PkgPath, params.Interfaces)
+		genFileHead(singleFile, packageName, primaryPkg.PkgPath, params.Interfaces)
 	}
 
 	for _, interfaceName := range params.Interfaces {
-		obj := pkg.Types.Scope().Lookup(interfaceName)
+		var obj types.Object
+		for _, pkg := range pkgs {
+			obj = pkg.Types.Scope().Lookup(interfaceName)
+			if obj != nil {
+				break
+			}
+		}
 		if obj == nil {
-			return fmt.Errorf("type '%s' not found in package '%s'", interfaceName, pkg.ID)
+			return fmt.Errorf("type '%s' not found in package '%s'", interfaceName, primaryPkg.PkgPath)
 		}
 		objType := obj.Type().Underlying()
 		log.Debugf("%s is %T which type is %T, and underlying type is %T", interfaceName, obj, obj.Type(), obj.Type().Underlying())
@@ -224,16 +241,16 @@ func run(env *Environment, params *Params) error {
 
 		file := singleFile
 		if !isSingleFile {
-			baseName := strings.ReplaceAll(fileNamePattern, "*", strcase.ToSnake(interfaceName))
+			baseName := strings.ReplaceAll(fileNamePattern, placeHolder, strcase.ToSnake(interfaceName))
 			path := filepath.Join(dstDir, baseName)
 			file = g.NewFile(path, importPath)
-			genFileHead(file, packageName, pkg.PkgPath, []string{interfaceName})
+			genFileHead(file, packageName, primaryPkg.PkgPath, []string{interfaceName})
 		}
 
 		generate(log, file, generateParams{
 			InterfaceName: interfaceName,
 			Interface:     iface,
-			PackagePath:   pkg.PkgPath,
+			PackagePath:   primaryPkg.PkgPath,
 		})
 	}
 	files := g.Files()
@@ -283,8 +300,8 @@ func loadPackages(log *zap.SugaredLogger, env *Environment, src string) ([]*pack
 		Env:        env.Env,
 		ParseFile:  nil, // TODO(skipor): optimize - remove static functions, methods bodies, to accelerate type checking
 		Fset:       token.NewFileSet(),
-		Tests:      false, // TODO(skipor): set to true if source and dest are same
-		BuildFlags: nil,   // TODO(skipor)
+		Tests:      true,
+		BuildFlags: nil, // TODO(skipor)
 	}, src)
 	return pkgs, err
 }
@@ -590,4 +607,12 @@ func paramName(param *types.Var, scope *gogen.Scope) string {
 	}
 	name = scope.Declare(name)
 	return name
+}
+
+func errorsNum(pkgs []*packages.Package) int {
+	var n int
+	packages.Visit(pkgs, nil, func(pkg *packages.Package) {
+		n += len(pkg.Errors)
+	})
+	return n
 }
