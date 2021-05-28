@@ -2,17 +2,19 @@
 
 `gmg` type-safe, fast and handy alternative [GoMock](https://github.com/golang/mock) generator.
 
-**Work In Progress!**
-
 ## Features
 
 * [Up to 4x times faster](#speed-measures) than [`mockgen` in reflect mode](https://github.com/golang/mock#reflect-mode)
   * `mockgen` builds program depending on your interface and analyse it with `reflect` - that is much extra work!
   * `gmg` loads ast and type info using [go/packages](https://pkg.go.dev/golang.org/x/tools/go/packages) which doesn't require executable build.
 
-* Type-safe: `gomock.Call` wrapped so `Do`, `Return` and `DoAndReturn` arguments are concrete types, but just `args ...interface{}`
+* Type-safe
+  * `gomock.Call` wrapped so `Do`, `Return` and `DoAndReturn` arguments are concrete types, but just `args ...interface{}`
   * Autocomplete works perfect!
   * After mock regeneration all type inconsistency in tests are visible in IDE as type check errors.
+  
+* Robust
+  * Generation usually works, even when compilation is not.
 
 * Easy to use
   * There are sensible defaults for source package (`.`) and destination (`./mocks`).
@@ -34,37 +36,37 @@ Please fix a specific version, if you use `gmg` in automation.
 ## Usage
 
 ```
-$ gmg --help
-gmg is a type-safe, fast and handy alternative GoMock generator. See details at: https://github.com/skipor/gmg
+$ gmg is type-safe, fast and handy alternative GoMock generator. See details at: https://github.com/skipor/gmg
 
 Usage: gmg [--src <package path>] [--dst <file path>] [--pkg <package name>] <interface name> [<interface name> ...]
 
 Flags:
+      --debug        Verbose debug logging.
   -d, --dst string   Destination directory or file relative path or pattern.
-                     '*' in directory path will be replaced with source package name.
-                     '*' in file name will be replaced with snake case interface name.
-                     If no file name pattern specified, then '*.go' used by default.
+                     '{}' in directory path will be replaced with the source package name.
+                     '{}' in file name will be replaced with snake case interface name.
+                     If no file name pattern specified, then '{}.go' used by default.
                      Examples:
-                        ./mocks
-                        ./*mocks
-                        ./mocks/*_gomock.go
-                        ./mocks_test.go # All mocks will be put to single file.
+                     	./mocks
+                     	./{}mocks
+                     	./mocks/{}_gomock.go
+                     	./mocks_test.go # All mocks will be put to single file.
                       (default "./mocks")
   -p, --pkg string   Package name in generated files.
-                     '*' will be replaced with the source package name.
+                     '{}' will be replaced with source package name.
                      Examples:
-                        mocks_* # mockgen style
-                        *mocks # mockery style
-                      (default "mocks_*")
+                     	mocks_{} # mockgen style
+                     	{}mocks # mockery style
+                      (default "mocks_{}")
   -s, --src string   Source Go package to search for interfaces. Absolute or relative.
-                     Maybe a third-party or standard library package.
+                     Maybe third-party or standard library package.
                      Examples:
-                        .
-                        ./relative/pkg
-                        github.com/third-party/pkg
-                        io
+                     	.
+                     	./relative/pkg
+                     	github.com/third-party/pkg
+                     	io
                       (default ".")
-
+      --version      Show version and exit.
 ```
 
 ## Speed measures
