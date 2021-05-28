@@ -7,8 +7,8 @@
 ## Features
 
 * [Up to 4x times faster](#speed-measures) than [`mockgen` in reflect mode](https://github.com/golang/mock#reflect-mode)
-    * `mockgen` builds program depending on your interface and analyse it with `reflect` - that is much extra work!
-    * `gmg` loads ast and type info using [go/packages](https://pkg.go.dev/golang.org/x/tools/go/packages) which doesn't require executable build.
+  * `mockgen` builds program depending on your interface and analyse it with `reflect` - that is much extra work!
+  * `gmg` loads ast and type info using [go/packages](https://pkg.go.dev/golang.org/x/tools/go/packages) which doesn't require executable build.
 
 * Type-safe: `gomock.Call` wrapped so `Do`, `Return` and `DoAndReturn` arguments are concrete types, but just `args ...interface{}`
   * Autocomplete works perfect!
@@ -17,7 +17,7 @@
 * Easy to use
   * There are sensible defaults for source package (`.`) and destination (`./mocks`).
 
-    That is, usually you need only to specify interface name to mock.
+    That is, usually, you need only to specify the interface name to mock.
 
 ## Install
 
@@ -29,13 +29,13 @@
 
 `GO111MODULE=on go get github.com/golang/mock/mockgen@latest`
 
-Please fix specific version, if you use `gmg` in automation.
+Please fix a specific version, if you use `gmg` in automation.
 
 ## Usage
 
 ```
 $ gmg --help
-gmg is type-safe, fast and handy alternative GoMock generator. See details at: https://github.com/skipor/gmg
+gmg is a type-safe, fast and handy alternative GoMock generator. See details at: https://github.com/skipor/gmg
 
 Usage: gmg [--src <package path>] [--dst <file path>] [--pkg <package name>] <interface name> [<interface name> ...]
 
@@ -51,13 +51,13 @@ Flags:
                         ./mocks_test.go # All mocks will be put to single file.
                       (default "./mocks")
   -p, --pkg string   Package name in generated files.
-                     '*' will be replaced with source package name.
+                     '*' will be replaced with the source package name.
                      Examples:
                         mocks_* # mockgen style
                         *mocks # mockery style
                       (default "mocks_*")
   -s, --src string   Source Go package to search for interfaces. Absolute or relative.
-                     May be third-party or standard library package.
+                     Maybe a third-party or standard library package.
                      Examples:
                         .
                         ./relative/pkg

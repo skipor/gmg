@@ -106,7 +106,7 @@ func LoadParams(env *Environment) (*Params, error) {
 	)
 	fs.StringVarP(&src, "src", "s", ".",
 		"Source Go package to search for interfaces. Absolute or relative.\n"+
-			"May be third-party or standard library package.\n"+
+			"Maybe third-party or standard library package.\n"+
 			"Examples:\n"+
 			"	.\n"+
 			"	./relative/pkg\n"+
@@ -115,7 +115,7 @@ func LoadParams(env *Environment) (*Params, error) {
 	)
 	fs.StringVarP(&dst, "dst", "d", "./mocks",
 		"Destination directory or file relative path or pattern.\n"+
-			"'*' in directory path will be replaced with source package name.\n"+
+			"'*' in directory path will be replaced with the source package name.\n"+
 			"'*' in file name will be replaced with snake case interface name.\n"+
 			"If no file name pattern specified, then '*.go' used by default.\n"+
 			"Examples:\n"+
