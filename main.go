@@ -382,7 +382,7 @@ func (g *fileGenerator) genMockMethod(method *types.Func) {
 	results := sig.Results()
 	g.L(`// `, method.Name(), ` implements mocked interface.`)
 	g.P(`func (m *`, g.mockName, `) `, method.Name(), `(`)
-	paramsNames := g.genMockMethodParams(scope, sig.Params())
+	paramsNames := g.genMockMethodParams(scope, sig)
 	g.P(")")
 
 	resultNames := g.genMockMethodFuncResults(scope, results)
@@ -414,7 +414,8 @@ func (g *fileGenerator) genMockMethod(method *types.Func) {
 	g.L()
 }
 
-func (g *fileGenerator) genMockMethodParams(scope *gogen.Scope, params *types.Tuple) []string {
+func (g *fileGenerator) genMockMethodParams(scope *gogen.Scope, sig *types.Signature) []string {
+	params := sig.Params()
 	var paramsNames []string
 	for i, l := 0, params.Len(); i < l; i++ {
 		param := params.At(i)
@@ -428,7 +429,17 @@ func (g *fileGenerator) genMockMethodParams(scope *gogen.Scope, params *types.Tu
 			g.P(", ")
 		}
 		g.P(name, " ")
-		g.writeType(param.Type())
+
+		typ := param.Type()
+		if sig.Variadic() && i == l-1 {
+			slice, ok := typ.(*types.Slice)
+			if !ok {
+				panic(fmt.Sprintf("last arg in variadic signature is not slice, but: %T", typ))
+			}
+			g.P("...")
+			typ = slice.Elem()
+		}
+		g.writeType(typ)
 	}
 	return paramsNames
 }
@@ -540,7 +551,7 @@ func (g *fileGenerator) genGomockCallWrapper(callWrapperName string, sig *types.
 		// DoAndReturn is type safe wrapper of *gomock.Call DoAndReturn.
 		func (c `, callWrapperName, `) DoAndReturn(f func(`)
 		lambdaScope := g.NewFuncScope()
-		g.genMockMethodParams(lambdaScope, sig.Params())
+		g.genMockMethodParams(lambdaScope, sig)
 		g.P(`) `)
 		g.genMockMethodFuncResults(lambdaScope, results)
 		g.L(`) `, callWrapperName, ` {
@@ -555,7 +566,7 @@ func (g *fileGenerator) genGomockCallWrapper(callWrapperName string, sig *types.
 		// Do is type safe wrapper of *gomock.Call Do.
 		func (c `, callWrapperName, `) Do(f func(`)
 		lambdaScope := g.NewFuncScope()
-		g.genMockMethodParams(lambdaScope, sig.Params())
+		g.genMockMethodParams(lambdaScope, sig)
 		g.L(`)) `, callWrapperName, ` {
 			c.Call.Do(f)
 		    return c
