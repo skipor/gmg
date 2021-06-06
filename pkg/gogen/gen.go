@@ -75,7 +75,7 @@ func (g *Generator) WriteFiles(fs afero.Fs) error {
 		if f.skipped {
 			continue
 		}
-		err := f.writeFile(fs)
+		err := f.WriteFile(fs)
 		if err != nil {
 			return fmt.Errorf("file %s: %w", f.path, err)
 		}
@@ -211,9 +211,13 @@ func (f *File) importBlockKind(pkg ImportPath) importBlockKind {
 var packageNameLinePrefix = []byte("package ")
 
 // Skip may be used to skip file from generation.
-func (f *File) Skip() { f.skipped = true }
+func (f *File) Skip()         { f.skipped = true }
+func (f *File) Skipped() bool { return f.skipped }
 
-func (f *File) writeFile(FS afero.Fs) error {
+func (f *File) WriteFile(FS afero.Fs) error {
+	if f.Skipped() {
+		return fmt.Errorf("file skipped")
+	}
 	content, err := f.Content()
 	if err != nil {
 		return fmt.Errorf("render: %w", err)

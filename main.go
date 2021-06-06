@@ -179,10 +179,55 @@ const placeHolder = "{}"
 
 func run(env *Environment, params *Params) error {
 	log := params.Log
-
 	pkgs, err := loadPackages(log, env, params.Source)
 	if err != nil {
 		return fmt.Errorf("package '%s' load failed: %w", params.Source, err)
+	}
+	primaryPkg := pkgs[0]
+	log.Infof("Processing package: %s", primaryPkg.ID)
+	var opts []gogen.Option
+	if primaryPkg.Module != nil {
+		opts = append(opts, gogen.ModulePath(primaryPkg.Module.Path))
+	}
+	g := gogen.NewGenerator(opts...)
+	err = generateAll(g, pkgs, params)
+	if err != nil {
+		return err
+	}
+	var fileNames []string
+	for _, f := range g.Files() {
+		fileNames = append(fileNames, f.Path())
+	}
+	log.Debugf("Generating: %s", strings.Join(fileNames, ", "))
+	for _, f := range g.Files() {
+		if f.Skipped() {
+			continue
+		}
+		err := f.WriteFile(env.Fs)
+		if err != nil {
+			return fmt.Errorf("file %s: %w", f.Path(), err)
+		}
+		_, _ = fmt.Fprintf(env.Stderr, "%s\n", f.Path())
+	}
+	return nil
+}
+
+func loadPackages(log *zap.SugaredLogger, env *Environment, src string) ([]*packages.Package, error) {
+	log.Debugf("Loading package: %s", src)
+	pkgs, err := packages.Load(&packages.Config{
+		Mode: packages.NeedName |
+			packages.NeedImports | // Workaround to fix "Unexpected package creation during export data loading". See https://github.com/golang/go/issues/45218
+			packages.NeedModule |
+			packages.NeedTypes,
+		Dir:        env.Dir,
+		Env:        env.Env,
+		ParseFile:  nil, // TODO(skipor): optimize - remove static functions, methods bodies, to accelerate type checking
+		Fset:       token.NewFileSet(),
+		Tests:      true,
+		BuildFlags: nil, // TODO(skipor)
+	}, src)
+	if err != nil {
+		return nil, err
 	}
 	debugLogPkgs(log, pkgs)
 	if errNum := errorsNum(pkgs); errNum != 0 {
@@ -196,9 +241,34 @@ func run(env *Environment, params *Params) error {
 		})
 		log.Warnf(strings.TrimSpace(b.String()))
 	}
-	primaryPkg := pkgs[0]
-	log.Infof("Processing package: %s", primaryPkg.ID)
+	return pkgs, nil
+}
 
+func debugLogPkgs(log *zap.SugaredLogger, pkgs []*packages.Package) {
+	w := &bytes.Buffer{}
+	p := func(format string, args ...interface{}) { _, _ = fmt.Fprintf(w, format, args...) }
+
+	p("Loaded %v packages:\n", len(pkgs))
+	for i, pkg := range pkgs {
+		if i != 0 {
+			p("\n")
+		}
+		p("- ID: %s\n", pkg.ID)
+		p("  Name: %s\n", pkg.Name)
+		p("  PkgPath: %s\n", pkg.PkgPath)
+
+		if m := pkg.Module; m != nil {
+			p("  Module:\n")
+			p("    Path: %s\n", m.Path)
+			p("    Dir: %s\n", m.Dir)
+		}
+	}
+	log.Debugf(w.String())
+}
+
+func generateAll(g *gogen.Generator, pkgs []*packages.Package, params *Params) error {
+	log := params.Log
+	primaryPkg := pkgs[0]
 	dstDir := strings.TrimPrefix(params.Destination, ".")
 	fileNamePattern := placeHolder + ".go"
 	if path.Ext(dstDir) == ".go" {
@@ -207,12 +277,6 @@ func run(env *Environment, params *Params) error {
 	dstDir = strings.ReplaceAll(dstDir, placeHolder, primaryPkg.Name)
 	packageName := strings.ReplaceAll(params.Package, placeHolder, primaryPkg.Name)
 	importPath := gogen.ImportPath(path.Join(primaryPkg.PkgPath, dstDir))
-
-	var opts []gogen.Option
-	if primaryPkg.Module != nil {
-		opts = append(opts, gogen.ModulePath(primaryPkg.Module.Path))
-	}
-	g := gogen.NewGenerator(opts...)
 
 	isSingleFile := !strings.Contains(fileNamePattern, placeHolder)
 	var singleFile *gogen.File
@@ -253,57 +317,7 @@ func run(env *Environment, params *Params) error {
 			PackagePath:   primaryPkg.PkgPath,
 		})
 	}
-	files := g.Files()
-	var fileNames []string
-	for _, f := range files {
-		fileNames = append(fileNames, f.Path())
-	}
-	log.Debugf("Generating: %s", strings.Join(fileNames, ", "))
-
-	err = g.WriteFiles(env.Fs)
-	if err != nil {
-		return fmt.Errorf("write files to '%s': %w", dstDir, err)
-	}
 	return nil
-}
-
-func debugLogPkgs(log *zap.SugaredLogger, pkgs []*packages.Package) {
-	w := &bytes.Buffer{}
-	p := func(format string, args ...interface{}) { _, _ = fmt.Fprintf(w, format, args...) }
-
-	p("Loaded %v packages:\n", len(pkgs))
-	for i, pkg := range pkgs {
-		if i != 0 {
-			p("\n")
-		}
-		p("- ID: %s\n", pkg.ID)
-		p("  Name: %s\n", pkg.Name)
-		p("  PkgPath: %s\n", pkg.PkgPath)
-
-		if m := pkg.Module; m != nil {
-			p("  Module:\n")
-			p("    Path: %s\n", m.Path)
-			p("    Dir: %s\n", m.Dir)
-		}
-	}
-	log.Debugf(w.String())
-}
-
-func loadPackages(log *zap.SugaredLogger, env *Environment, src string) ([]*packages.Package, error) {
-	log.Debugf("Loading package: %s", src)
-	pkgs, err := packages.Load(&packages.Config{
-		Mode: packages.NeedName |
-			packages.NeedImports | // Workaround to fix "Unexpected package creation during export data loading". See https://github.com/golang/go/issues/45218
-			packages.NeedModule |
-			packages.NeedTypes,
-		Dir:        env.Dir,
-		Env:        env.Env,
-		ParseFile:  nil, // TODO(skipor): optimize - remove static functions, methods bodies, to accelerate type checking
-		Fset:       token.NewFileSet(),
-		Tests:      true,
-		BuildFlags: nil, // TODO(skipor)
-	}, src)
-	return pkgs, err
 }
 
 func genFileHead(f *gogen.File, packageName string, src string, interfaceNames []string) {
@@ -614,6 +628,8 @@ func (g *fileGenerator) writeType(t types.Type) {
 func paramName(param *types.Var, scope *gogen.Scope) string {
 	name := param.Name()
 	if name == "" {
+		// TODO(skipor): well known names: ctx, err
+		// TODO(skipor): deduce better name from type
 		name = "arg"
 	}
 	name = scope.Declare(name)
