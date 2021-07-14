@@ -225,7 +225,7 @@ func (f *File) WriteFile(FS afero.Fs) error {
 
 	dir, _ := filepath.Split(f.path)
 	if !(dir == "" || dir == ".") {
-		err := FS.MkdirAll(dir, 755)
+		err := FS.MkdirAll(dir, 0755)
 		if err != nil {
 			return fmt.Errorf("make dir all: %w", err)
 		}
@@ -332,6 +332,9 @@ type Scope struct {
 // Declare reserves unique name for the requested name.
 // Returned name will have no conflicts with Go universe scope and previously reserved names.
 func (f *Scope) Declare(name string) string {
+	if name == "_" {
+		return "_"
+	}
 	baseName := name
 	for i := 2; ; i++ {
 		if !f.Contains(name) {

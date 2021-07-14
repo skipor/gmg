@@ -54,8 +54,9 @@ type Environment struct {
 	Args   []string
 	Stderr io.Writer
 	Dir    string
-	Fs     afero.Fs
 	Env    []string
+	// Fs is for output only. Go tooling invoked under hood, that read read files.
+	Fs afero.Fs
 }
 
 type Params struct {
@@ -367,6 +368,12 @@ func (g *fileGenerator) generate() {
 	g.genRecorder()
 }
 
+const (
+	mockReceiver     = "m_"
+	recorderReceiver = "r_"
+	callReceiver     = "c_"
+)
+
 func (g *fileGenerator) genMock() {
 	g.L(`
 	// New`, g.mockName, ` creates a new GoMock for `, g.PackagePath, `.`, g.InterfaceName, `.
@@ -380,8 +387,8 @@ func (g *fileGenerator) genMock() {
 
 	g.L(`
 	// EXPECT returns GoMock recorder.
-	func (m *`, g.mockName, `) EXPECT() *`, g.recorderName, ` {
-		return (*`, g.recorderName, `)(m)
+	func (`, mockReceiver, ` *`, g.mockName, `) EXPECT() *`, g.recorderName, ` {
+		return (*`, g.recorderName, `)(`, mockReceiver, `)
 	}`)
 	g.L()
 
@@ -392,18 +399,23 @@ func (g *fileGenerator) genMock() {
 
 func (g *fileGenerator) genMockMethod(method *types.Func) {
 	scope := g.NewFuncScope()
+	receiver := scope.Declare(mockReceiver)
 	sig := method.Type().(*types.Signature)
 	results := sig.Results()
 	g.L(`// `, method.Name(), ` implements mocked interface.`)
-	g.P(`func (m *`, g.mockName, `) `, method.Name(), `(`)
+	g.P(`func (`, receiver, ` *`, g.mockName, `) `, method.Name(), `(`)
 	paramsNames := g.genMockMethodParams(scope, sig)
 	g.P(")")
 
 	resultNames := g.genMockMethodFuncResults(scope, results)
 	g.L(" {")
 
-	g.L(`m.ctrl.T.Helper()`)
-	g.P(`res := m.ctrl.Call(m, "`, method.Name(), `"`)
+	res := scope.Declare("res_")
+	g.L(receiver, `.ctrl.T.Helper()`)
+	if results.Len() > 0 {
+		g.P(res, ` := `)
+	}
+	g.P(receiver, `.ctrl.Call(`, receiver, `, "`, method.Name(), `"`)
 	for _, paramName := range paramsNames {
 		g.P(", ", paramName)
 	}
@@ -411,7 +423,11 @@ func (g *fileGenerator) genMockMethod(method *types.Func) {
 	for i := 0; i < results.Len(); i++ {
 		result := results.At(i)
 		name := resultNames[i]
-		g.P(name, ` , _ := res[`, i, `].(`)
+		g.P(name, ` , _ `)
+		if noName(result) {
+			g.P(":")
+		}
+		g.P(`= `, res, `[`, i, `].(`)
 		g.writeType(result.Type())
 		g.L(`)`)
 	}
@@ -428,16 +444,20 @@ func (g *fileGenerator) genMockMethod(method *types.Func) {
 	g.L()
 }
 
+func noName(v *types.Var) bool {
+	return emptyOrUnderscore(v.Name())
+}
+
+func emptyOrUnderscore(name string) bool {
+	return name == "" || name == "_"
+}
+
 func (g *fileGenerator) genMockMethodParams(scope *gogen.Scope, sig *types.Signature) []string {
 	params := sig.Params()
 	var paramsNames []string
 	for i, l := 0, params.Len(); i < l; i++ {
 		param := params.At(i)
-		name := param.Name()
-		if name == "" {
-			name = "arg"
-		}
-		name = scope.Declare(name)
+		name := paramName(param, scope)
 		paramsNames = append(paramsNames, name)
 		if i != 0 {
 			g.P(", ")
@@ -463,13 +483,9 @@ func (g *fileGenerator) genMockMethodFuncResults(scope *gogen.Scope, results *ty
 		return nil
 	}
 	g.P(" ")
-	if results.Len() > 1 {
-		g.P("(")
-	}
+	g.P("(")
 	resultNames := g.genMockMethodResults(scope, results)
-	if results.Len() > 1 {
-		g.P(")")
-	}
+	g.P(")")
 	return resultNames
 }
 
@@ -480,11 +496,15 @@ func (g *fileGenerator) genMockMethodResults(scope *gogen.Scope, results *types.
 			g.P(", ")
 		}
 		result := results.At(i)
-		name := result.Name()
-		if name != "" {
-			g.P(name, " ")
+		name := g.resultName(scope, result, i)
+		if result.Name() != "" {
+			sigName := name
+			if result.Name() == "_" {
+				sigName = "_"
+			}
+			g.P(sigName, " ")
 		}
-		resultNames = append(resultNames, g.resultName(scope, result, i))
+		resultNames = append(resultNames, name)
 		g.writeType(result.Type())
 	}
 	return resultNames
@@ -510,24 +530,24 @@ func (g *fileGenerator) genRecorder() {
 	}
 
 	g.L(`
-	func (r *`, g.recorderName, `) mock() *`, g.mockName, ` {
-		return (*`, g.mockName, `)(r)
+	func (`, recorderReceiver, `*`, g.recorderName, `) mock() *`, g.mockName, ` {
+		return (*`, g.mockName, `)(`, recorderReceiver, `)
 	}`)
 }
 
 func (g *fileGenerator) genRecorderMethod(method *types.Func) {
 	callWrapperName := g.mockName + strcase.ToCamel(method.Name()) + "Call"
 	scope := g.NewFuncScope()
-	scope.Redeclare("r")
+	receiver := scope.Declare(recorderReceiver)
 	sig := method.Type().(*types.Signature)
 	g.L(`// `, method.Name(), ` makes call expectation.`)
-	g.P(`func (r *`, g.recorderName, `) `, method.Name(), `(`)
+	g.P(`func (`, receiver, ` *`, g.recorderName, `) `, method.Name(), `(`)
 	paramsNames := g.genRecorderMethodParams(sig.Params(), scope)
 	g.L(`) `, callWrapperName, ` {`)
-	g.L(`r.ctrl.T.Helper()`)
+	g.L(receiver, `.ctrl.T.Helper()`)
 
 	callVarName := scope.Declare("call")
-	g.P(callVarName, ` := r.ctrl.RecordCallWithMethodType(r.mock(), "`, method.Name(), `", reflect.TypeOf((*`, g.mockName, `)(nil).`, method.Name(), `)`)
+	g.P(callVarName, ` := `, receiver, `.ctrl.RecordCallWithMethodType(`, receiver, `.mock(), "`, method.Name(), `", reflect.TypeOf((*`, g.mockName, `)(nil).`, method.Name(), `)`)
 	for _, paramName := range paramsNames {
 		g.P(", ", paramName)
 	}
@@ -540,17 +560,17 @@ func (g *fileGenerator) genRecorderMethod(method *types.Func) {
 }
 
 func (g *fileGenerator) genRecorderMethodParams(params *types.Tuple, scope *gogen.Scope) []string {
-	var paramsNames []string
+	var paramNames []string
 	for i, l := 0, params.Len(); i < l; i++ {
 		param := params.At(i)
 		name := paramName(param, scope)
-		paramsNames = append(paramsNames, name)
+		paramNames = append(paramNames, name)
 		if i != 0 {
 			g.P(", ")
 		}
 		g.P(name, " interface{}")
 	}
-	return paramsNames
+	return paramNames
 }
 
 func (g *fileGenerator) genGomockCallWrapper(callWrapperName string, sig *types.Signature) {
@@ -561,39 +581,41 @@ func (g *fileGenerator) genGomockCallWrapper(callWrapperName string, sig *types.
 
 	results := sig.Results()
 	{
+		scope := g.NewFuncScope()
+		receiver := scope.Declare(callReceiver)
 		g.P(`
 		// DoAndReturn is type safe wrapper of *gomock.Call DoAndReturn.
-		func (c `, callWrapperName, `) DoAndReturn(f func(`)
-		lambdaScope := g.NewFuncScope()
-		g.genMockMethodParams(lambdaScope, sig)
+		func (`, receiver, ` `, callWrapperName, `) DoAndReturn(f func(`)
+		g.genMockMethodParams(scope, sig)
 		g.P(`) `)
-		g.genMockMethodFuncResults(lambdaScope, results)
+		g.genMockMethodFuncResults(scope, results)
 		g.L(`) `, callWrapperName, ` {
-			c.Call.DoAndReturn(f)
-			return c
+			`, receiver, `.Call.DoAndReturn(f)
+			return `, receiver, `
 		}
 		`)
 		g.L()
 	}
 	{
+		scope := g.NewFuncScope()
+		receiver := scope.Declare(callReceiver)
 		g.P(`
 		// Do is type safe wrapper of *gomock.Call Do.
-		func (c `, callWrapperName, `) Do(f func(`)
-		lambdaScope := g.NewFuncScope()
-		g.genMockMethodParams(lambdaScope, sig)
+		func (`, receiver, ` `, callWrapperName, `) Do(f func(`)
+		g.genMockMethodParams(scope, sig)
 		g.L(`)) `, callWrapperName, ` {
-			c.Call.Do(f)
-		    return c
+			`, receiver, `.Call.Do(f)
+		    return `, receiver, `
 		}
 		`)
 		g.L()
 	}
 	if results.Len() > 0 {
+		scope := g.NewFuncScope()
+		receiver := scope.Declare(callReceiver)
 		g.P(`
 		// Return is type safe wrapper of *gomock.Call Return.
-		func (c `, callWrapperName, `) Return(`)
-		scope := g.NewFuncScope()
-		scope.Redeclare("c")
+		func (`, receiver, ` `, callWrapperName, `) Return(`)
 		var resultNames []string
 		for i := 0; i < results.Len(); i++ {
 			if i != 0 {
@@ -606,7 +628,7 @@ func (g *fileGenerator) genGomockCallWrapper(callWrapperName string, sig *types.
 			g.writeType(result.Type())
 		}
 		g.P(`) `, callWrapperName, ` {
-			c.Call.Return(`)
+			`, receiver, `.Call.Return(`)
 		for i, name := range resultNames {
 			if i != 0 {
 				g.P(` ,`)
@@ -614,7 +636,7 @@ func (g *fileGenerator) genGomockCallWrapper(callWrapperName string, sig *types.
 			g.P(name)
 		}
 		g.L(`)
-			return c
+			return `, receiver, `
 		}
 		`)
 		g.L()
@@ -627,13 +649,12 @@ func (g *fileGenerator) writeType(t types.Type) {
 
 func paramName(param *types.Var, scope *gogen.Scope) string {
 	name := param.Name()
-	if name == "" {
+	if emptyOrUnderscore(name) {
 		// TODO(skipor): well known names: ctx, err
 		// TODO(skipor): deduce better name from type
 		name = "arg"
 	}
-	name = scope.Declare(name)
-	return name
+	return scope.Declare(name)
 }
 
 func errorsNum(pkgs []*packages.Package) int {

@@ -4,23 +4,22 @@
 
 ## Features
 
+* [Up to 4x times faster](#speed-measures) than [`mockgen` in reflect mode](https://github.com/golang/mock#reflect-mode)
+  * `mockgen` builds program depending on your interface and analyse it with `reflect` - that is much extra work!
+  * `gmg` loads ast and type info using [go/packages](https://pkg.go.dev/golang.org/x/tools/go/packages) which doesn't require build and run executable .
+
 * Type-safe
   * `gomock.Call` wrapped so `Do`, `Return` and `DoAndReturn` arguments are concrete types, but just `args ...interface{}`
   * Autocomplete works perfect!
   * After mock regeneration all type inconsistency in tests are visible in IDE as type check errors.
 
-* [Up to 4x times faster](#speed-measures) than [`mockgen` in reflect mode](https://github.com/golang/mock#reflect-mode)
-  * `mockgen` builds program depending on your interface and analyse it with `reflect` - that is much extra work!
-  * `gmg` loads ast and type info using [go/packages](https://pkg.go.dev/golang.org/x/tools/go/packages) which doesn't require build and run executable .
+* Robust
+  * Generation usually works, even when compilation is not.
 
 * Easy to use
   * There are sensible defaults for source package (`.`) and destination (`./mocks`).
 
     That is, usually, you need only to specify the interface name to mock.
-    
-* Robust
-  * Generation usually works, even when compilation is not.
-
 
 ## Install
 
