@@ -6,37 +6,37 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-type PackageKind string
+type packageKind string
 
 const (
-	// PrimaryPackageKind is package of usual *.go files.
+	// primaryPackageKind is package of usual *.go files.
 	// ID is like 'pkg'.
-	PrimaryPackageKind = "primary"
-	// TestPackageKind is package of *_test.go files with package name like non-test files.
+	primaryPackageKind = "primary"
+	// testPackageKind is package of *_test.go files with package name like non-test files.
 	// ID is like 'pkg [pkg.test]'
-	TestPackageKind = "test"
-	// BlackBoxTestPackageKind is package of *_test.go files with package name with '_test' suffix.
+	testPackageKind = "test"
+	// blackBoxTestPackageKind is package of *_test.go files with package name with '_test' suffix.
 	// ID is like 'pkg_test [pkg.test]'
-	BlackBoxTestPackageKind = "black-box-test"
-	// TestExecutablePackageKind is virtual package from test executable files, that are generated during 'go test' rung.
+	blackBoxTestPackageKind = "black-box-test"
+	// testExecutablePackageKind is virtual package from test executable files, that are generated during 'go test' rung.
 	// ID is like 'pkg.test'
-	TestExecutablePackageKind = "test-executable"
+	testExecutablePackageKind = "test-executable"
 )
 
-func GetPackageKind(p *packages.Package) PackageKind {
+func getPackageKind(p *packages.Package) packageKind {
 	if strings.HasSuffix(p.ID, ".test") {
-		return TestExecutablePackageKind
+		return testExecutablePackageKind
 	}
 	if !strings.HasSuffix(p.ID, ".test]") {
-		return PrimaryPackageKind
+		return primaryPackageKind
 	}
 	if strings.HasSuffix(p.PkgPath, "_test") {
-		return BlackBoxTestPackageKind
+		return blackBoxTestPackageKind
 	}
-	return TestPackageKind
+	return testPackageKind
 }
 
-func (k PackageKind) String() string { return string(k) }
+func (k packageKind) String() string { return string(k) }
 
 func errorKindStr(k packages.ErrorKind) string {
 	switch k {
@@ -54,7 +54,7 @@ func errorKindStr(k packages.ErrorKind) string {
 
 func packagesWithoutTestExecutable(pkgs []*packages.Package) []*packages.Package {
 	for i, pkg := range pkgs {
-		if GetPackageKind(pkg) == TestExecutablePackageKind {
+		if getPackageKind(pkg) == testExecutablePackageKind {
 			return append(pkgs[:i], pkgs[i+1:]...)
 		}
 	}

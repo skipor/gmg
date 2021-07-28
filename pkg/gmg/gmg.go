@@ -20,8 +20,8 @@ import (
 const gmgVersion = "v0.3.0"
 
 func Main(env *Environment) int {
-	params, err := LoadParams(env)
-	if errors.Is(err, ErrExitZero) {
+	params, err := loadParams(env)
+	if errors.Is(err, errExitZero) {
 		return 0
 	}
 	if err != nil {
@@ -29,14 +29,6 @@ func Main(env *Environment) int {
 	}
 	err = run(env, params)
 	return handleError(env, err)
-}
-
-func handleError(env *Environment, err error) int {
-	if err == nil {
-		return 0
-	}
-	_, _ = fmt.Fprintf(env.Stderr, "ERROR: %+v\n", err)
-	return 1
 }
 
 type Environment struct {
@@ -62,9 +54,9 @@ func RealEnvironment() *Environment {
 	}
 }
 
-var ErrExitZero = errors.New("should exit with zero code")
+var errExitZero = errors.New("should exit with zero code")
 
-type Params struct {
+type params struct {
 	Log        *zap.SugaredLogger
 	Interfaces []string
 	// Source is Go package to search for interfaces. See flag description for details.
@@ -75,7 +67,7 @@ type Params struct {
 	Package string
 }
 
-func LoadParams(env *Environment) (*Params, error) {
+func loadParams(env *Environment) (*params, error) {
 	fs := pflag.NewFlagSet("gmg", pflag.ContinueOnError)
 	fs.PrintDefaults()
 	fs.Usage = func() {
@@ -125,13 +117,13 @@ func LoadParams(env *Environment) (*Params, error) {
 	err := fs.Parse(env.Args)
 	if err != nil {
 		if errors.Is(err, pflag.ErrHelp) {
-			return nil, ErrExitZero
+			return nil, errExitZero
 		}
 		return nil, fmt.Errorf("flags parse: %w", err)
 	}
 	if version {
 		_, _ = fmt.Fprintf(env.Stderr, "gmg %s\n", gmgVersion)
-		return nil, ErrExitZero
+		return nil, errExitZero
 	}
 
 	if strings.HasSuffix(src, "/...") {
@@ -155,7 +147,7 @@ func LoadParams(env *Environment) (*Params, error) {
 		return nil, fmt.Errorf("need one or more interface names passed as arguments")
 	}
 
-	return &Params{
+	return &params{
 		Log:         log.Sugar(),
 		Source:      src,
 		Destination: path.Clean(dst),
@@ -165,9 +157,17 @@ func LoadParams(env *Environment) (*Params, error) {
 
 }
 
+func handleError(env *Environment, err error) int {
+	if err == nil {
+		return 0
+	}
+	_, _ = fmt.Fprintf(env.Stderr, "ERROR: %+v\n", err)
+	return 1
+}
+
 const placeHolder = "{}"
 
-func run(env *Environment, params *Params) error {
+func run(env *Environment, params *params) error {
 	log := params.Log
 	pkgs, err := loadPackages(log, env, params.Source)
 	if err != nil {

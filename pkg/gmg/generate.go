@@ -14,7 +14,7 @@ import (
 	"github.com/skipor/gmg/pkg/gogen"
 )
 
-func generateAll(g *gogen.Generator, pkgs []*packages.Package, params *Params) error {
+func generateAll(g *gogen.Generator, pkgs []*packages.Package, params *params) error {
 	log := params.Log
 	primaryPkg := pkgs[0]
 	dstDir := strings.TrimPrefix(params.Destination, ".")
