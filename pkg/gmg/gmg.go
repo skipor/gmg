@@ -1,4 +1,4 @@
-package main
+package gmg
 
 import (
 	"bytes"
@@ -18,12 +18,6 @@ import (
 )
 
 const gmgVersion = "v0.3.0"
-
-func main() {
-	env := RealEnvironment()
-	exitCode := Main(env)
-	os.Exit(exitCode)
-}
 
 func Main(env *Environment) int {
 	params, err := LoadParams(env)
