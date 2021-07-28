@@ -4,12 +4,42 @@ import (
 	"testing"
 )
 
-func TestTrivial_NoPackageArgument(t *testing.T) {
+func TestTrivial(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
 			"file.go": /* language=go */ `
 			package pkg
+			type Foo interface { Bar() string }
+			`,
+		},
+	})
+	tr.
+		Succeed(t, "Foo").
+		Golden()
+}
+
+func TestTrivial_TestOnly(t *testing.T) {
+	tr := newTester(t, M{
+		Name: "pkg",
+		Files: map[string]interface{}{
+			"file_test.go": /* language=go */ `
+			package pkg
+			type Foo interface { Bar() string }
+			`,
+		},
+	})
+	tr.
+		Succeed(t, "Foo").
+		Golden()
+}
+
+func TestTrivial_BlackBoxTestOnly(t *testing.T) {
+	tr := newTester(t, M{
+		Name: "pkg",
+		Files: map[string]interface{}{
+			"file_test.go": /* language=go */ `
+			package pkg_test
 			type Foo interface { Bar() string }
 			`,
 		},
@@ -75,4 +105,49 @@ func TestTrivial_RelativeSrc(t *testing.T) {
 		},
 	})
 	tr.Succeed(t, "--src", "./sub", "Foo").Files("mocks/foo.go")
+}
+
+func TestPackageNotFound(t *testing.T) {
+	tr := newTester(t, M{
+		Name: "pkg",
+		Files: map[string]interface{}{
+			"sub/file.go": /* language=go */ `
+			package sub
+			type Foo interface { Bar() string }
+			`,
+		},
+	})
+	tr.Fail(t, "--src", "./not_found", "Foo")
+}
+
+func TestPackageNameConflictSucceed(t *testing.T) {
+	tr := newTester(t, M{
+		Name: "pkg",
+		Files: map[string]interface{}{
+			"a.go": /* language=go */ `
+			package a
+			type Foo interface { Bar() string }
+			`,
+			"b.go": /* language=go */ `
+			package b
+			`,
+		},
+	})
+	tr.Succeed(t, "Foo")
+}
+
+func TestPackageNameConflictFail(t *testing.T) {
+	tr := newTester(t, M{
+		Name: "pkg",
+		Files: map[string]interface{}{
+			"a.go": /* language=go */ `
+			package a
+			`,
+			"b.go": /* language=go */ `
+			package b
+			type Foo interface { Bar() string }
+			`,
+		},
+	})
+	tr.Fail(t, "Foo")
 }
