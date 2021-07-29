@@ -1,4 +1,4 @@
-module github.com/skipor/gmg/testdata
+module github.com/skipor/gmg/pkg/gmg/testdata
 
 // Mod file needed to make generated files compiled when they can.
 

@@ -1,4 +1,4 @@
-package main
+package gmg
 
 import (
 	"os/exec"
@@ -101,24 +101,6 @@ func exportedInfo(t *testing.T, e *packagestest.Exported) {
 	require.NoError(t, err)
 	t.Logf("Tree of temp dir:\n%s", out)
 	//logGoEnv(t, e.Config.Env)
-}
-
-func logGoEnv(t *testing.T, confEnv []string) {
-	set := map[string]struct{}{}
-	var env []string
-	for i := len(confEnv) - 1; i >= 0; i-- {
-		kv := confEnv[i]
-		if !strings.HasPrefix(kv, "GO") {
-			continue
-		}
-		k := strings.SplitN(kv, "=", 2)[0]
-		if _, ok := set[k]; ok {
-			continue
-		}
-		set[k] = struct{}{}
-		env = append(env, kv)
-	}
-	t.Logf("Env:\n\t%s", strings.Join(env, "\n\t"))
 }
 
 type testWriter struct{ t *testing.T }
