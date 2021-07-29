@@ -169,7 +169,7 @@ func fsToMap(t *testing.T, FS afero.Fs) pathToFileContentMap {
 func isPartialRun() bool {
 	for _, arg := range os.Args {
 		switch arg {
-		case "-run", "--run":
+		case "-test.run", "--test.run":
 			return true
 		}
 	}

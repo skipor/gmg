@@ -171,7 +171,11 @@ func run(env *Environment, params *params) error {
 	log := params.Log
 	pkgs, err := loadPackages(log, env, params.Source)
 	if err != nil {
-		return fmt.Errorf("package '%s' load failed: %w", params.Source, err)
+		errStr := err.Error()
+		if strings.Contains(errStr, "\n") {
+			errStr = "\n" + errStr
+		}
+		return fmt.Errorf("package '%s' load failed: %s", params.Source, errStr)
 	}
 	primaryPkg := pkgs[0]
 	log.Infof("Processing package: %s", primaryPkg.ID)
