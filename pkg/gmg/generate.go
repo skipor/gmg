@@ -1,6 +1,7 @@
 package gmg
 
 import (
+	"bytes"
 	"fmt"
 	"go/types"
 	"path"
@@ -292,7 +293,12 @@ func (g *fileGenerator) genRecorderMethod(method *types.Func) {
 	scope := g.NewFuncScope()
 	receiver := scope.Declare(recorderReceiver)
 	sig := method.Type().(*types.Signature)
-	g.L(`// `, method.Name(), ` makes call expectation.`)
+	// Indent with spaces, to make comment go doc code block.
+	g.P(`//   `, method.Name())
+	writeSignature(g.Buffer(), method.Type().(*types.Signature), func(p *types.Package) string {
+		return p.Name()
+	})
+	g.L()
 	g.P(`func (`, receiver, ` *`, g.recorderName, `) `, method.Name(), `(`)
 	paramsNames := g.genRecorderMethodParams(sig.Params(), scope)
 	g.L(`) `, callWrapperName, ` {`)
@@ -407,4 +413,45 @@ func paramName(param *types.Var, scope *gogen.Scope) string {
 		name = "arg"
 	}
 	return scope.Declare(name)
+}
+
+func writeSignature(buf *bytes.Buffer, sig *types.Signature, qf types.Qualifier) {
+	writeTuple(buf, sig.Params(), sig.Variadic(), qf)
+	res := sig.Results()
+	if res.Len() == 0 {
+		return
+	}
+
+	buf.WriteByte(' ')
+	firstRes := res.At(0)
+	if res.Len() == 1 && firstRes.Name() == "" {
+		types.WriteType(buf, firstRes.Type(), qf)
+		return
+	}
+	writeTuple(buf, res, false, qf)
+}
+
+func writeTuple(buf *bytes.Buffer, tup *types.Tuple, variadic bool, qf types.Qualifier) {
+	buf.WriteByte('(')
+	if tup != nil {
+		for i, l := 0, tup.Len(); i < l; i++ {
+			v := tup.At(i)
+			if i > 0 {
+				buf.WriteString(", ")
+			}
+			if v.Name() != "" {
+				buf.WriteString(v.Name())
+				buf.WriteByte(' ')
+			}
+			typ := v.Type()
+			if variadic && i == l-1 {
+				if slice, ok := typ.(*types.Slice); ok {
+					buf.WriteString("...")
+					typ = slice.Elem()
+				}
+			}
+			types.WriteType(buf, typ, qf)
+		}
+	}
+	buf.WriteByte(')')
 }

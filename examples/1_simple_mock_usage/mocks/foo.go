@@ -33,7 +33,7 @@ func (m_ *MockFoo) Bar(s string) error {
 // MockFooMockRecorder is the mock recorder for MockFoo.
 type MockFooMockRecorder MockFoo
 
-// Bar makes call expectation.
+//   Bar(s string) error
 func (r_ *MockFooMockRecorder) Bar(s interface{}) MockFooBarCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "Bar", reflect.TypeOf((*MockFoo)(nil).Bar), s)

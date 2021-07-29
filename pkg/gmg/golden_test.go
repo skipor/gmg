@@ -107,10 +107,8 @@ func (td *GoldenTestData) MustPostRun() {
 func (td *GoldenTestData) PostRun() error {
 	if isPartialRun() {
 		// Some dirs were not checked, so can't check for extra.
-		fmt.Println("Golden PostRun skipped due to partial test run")
 		return nil
 	}
-	fmt.Printf("Checked dirs: %s\n", td.checkedDirs)
 	infos, err := os.ReadDir(td.path)
 	if err != nil {
 		return fmt.Errorf("dir '%s' read failed: %w", td.path, err)
