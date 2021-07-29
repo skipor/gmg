@@ -13,6 +13,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
+
+	"github.com/skipor/gmg/internal/testutil"
 )
 
 var update bool
@@ -26,6 +28,12 @@ func TestMain(m *testing.M) {
 }
 
 func testMainRun(m *testing.M) int {
+	err := testutil.InstallGmgOnce()
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "gmg install failed: %s\n", err)
+		return 1
+	}
+
 	code := m.Run()
 	if code != 0 {
 		// Don't check on run fail.

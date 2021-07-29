@@ -23,7 +23,7 @@ func newTester(t *testing.T, modules ...M) *Tester {
 	}
 }
 
-func (tr *Tester) run(t *testing.T, args ...string) *RunResult {
+func (tr *Tester) Gmg(t *testing.T, args ...string) *RunResult {
 	args = append(args, "--debug")
 	t.Logf("Run: gmg %s", strings.Join(args, " "))
 	FS := &afero.MemMapFs{}
@@ -43,16 +43,66 @@ func (tr *Tester) run(t *testing.T, args ...string) *RunResult {
 	}
 }
 
-func (tr *Tester) Succeed(t *testing.T, args ...string) *RunResult {
-	res := tr.run(t, args...)
-	require.Zero(t, res.ExitCode)
-	return res
+func (tr *Tester) GoGenerate(t *testing.T) *RunResult {
+	t.Helper()
+	dir := tr.exported.Config.Dir
+	cmd := exec.Command("go", "generate", "./...")
+	w := testWriter{t}
+	cmd.Stdout = w
+	cmd.Stderr = w
+	cmd.Dir = dir
+	cmd.Env = append(tr.exported.Config.Env, "GMG_DEBUG=true")
+
+	beforeFsMap := fsToMap(t, afero.NewBasePathFs(afero.NewOsFs(), dir))
+
+	t.Logf("Run: %s", cmd.String())
+	err := cmd.Run()
+	var exitCode int
+	if err != nil {
+		err, ok := err.(*exec.ExitError)
+		if ok {
+			t.Fatalf("Unexpected run fail: %+v", err)
+		}
+		exitCode = err.ExitCode()
+	}
+	afterFsMap := fsToMap(t, afero.NewBasePathFs(afero.NewOsFs(), dir))
+
+	for path := range beforeFsMap {
+		_, ok := afterFsMap[path]
+		if !ok {
+			t.Fatalf("file '%s' removed after '%s' run", path, cmd.String())
+		}
+	}
+	changed := afero.NewMemMapFs().(*afero.MemMapFs)
+	for path, before := range afterFsMap {
+		after, ok := beforeFsMap[path]
+		if !ok || before != after {
+			err := afero.WriteFile(changed, path, []byte(after), 0644)
+			require.NoError(t, err)
+		}
+	}
+
+	return &RunResult{
+		t:        t,
+		ExitCode: exitCode,
+		FS:       changed,
+	}
 }
 
-func (tr *Tester) Fail(t *testing.T, args ...string) *RunResult {
-	res := tr.run(t, args...)
-	require.NotZero(t, res.ExitCode)
-	return res
+type RunResult struct {
+	t        *testing.T
+	ExitCode int
+	FS       *afero.MemMapFs
+}
+
+func (r *RunResult) Succeed() *RunResult {
+	require.Zero(r.t, r.ExitCode)
+	return r
+}
+
+func (r *RunResult) Fail() *RunResult {
+	require.NotZero(r.t, r.ExitCode)
+	return r
 }
 
 func (r *RunResult) Files(expectedFiles ...string) *RunResult {
@@ -73,12 +123,6 @@ func (r *RunResult) Files(expectedFiles ...string) *RunResult {
 func (r *RunResult) Golden() *RunResult {
 	golden.Dir(r.t, r.FS)
 	return r
-}
-
-type RunResult struct {
-	t        *testing.T
-	ExitCode int
-	FS       *afero.MemMapFs
 }
 
 type Tester struct {

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/afero"
@@ -112,7 +113,7 @@ func loadParams(env *Environment) (*params, error) {
 			"Examples:\n"+
 			"	mocks_{} # mockgen style\n"+
 			"	{}mocks # mockery style\n")
-	fs.BoolVar(&debug, "debug", false, "Verbose debug logging.")
+	fs.BoolVar(&debug, "debug", os.Getenv("GMG_DEBUG") != "", "Verbose debug logging.")
 	fs.BoolVar(&version, "version", false, "Show version and exit.")
 	err := fs.Parse(env.Args)
 	if err != nil {
@@ -169,6 +170,7 @@ const placeHolder = "{}"
 
 func run(env *Environment, params *params) error {
 	log := params.Log
+	log.Debugf("gmg version %s %s/%s", gmgVersion, runtime.GOOS, runtime.GOARCH)
 	pkgs, err := loadPackages(log, env, params.Source)
 	if err != nil {
 		errStr := err.Error()
