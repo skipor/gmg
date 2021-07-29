@@ -21,7 +21,7 @@ func init() {
 }
 
 func TestExamplesGoGenerate(t *testing.T) {
-	gmg, err := build()
+	gmg, err := buildGmg()
 	if err != nil {
 		require.NoError(t, err, "gmg build")
 	}
@@ -45,9 +45,9 @@ func TestExamplesGoGenerate(t *testing.T) {
 					t.Fatalf("diff before generate:\n%s", diff)
 				}
 			}
-			cmd := exec.Command("go", "generate")
+			cmd := exec.Command("go", "generate", "./"+dir+"/...")
 			out, err := cmd.CombinedOutput()
-			t.Logf("%s:\n%s", cmd.String(), out)
+			t.Logf("%s\n%s", cmd.String(), out)
 			require.NoError(t, err, "go generate failed")
 			if !update {
 				diff := vcsDiff(t, dir)
@@ -67,8 +67,8 @@ type buildResult struct {
 	cleanup    func()
 }
 
-func build() (res *buildResult, err error) {
-	tmp, err := ioutil.TempDir("", "gmg_test_main_*")
+func buildGmg() (res *buildResult, err error) {
+	tmp, err := ioutil.TempDir("", "gmg_examples_test_*")
 	if err != nil {
 		return nil, fmt.Errorf("tmp dir: %+v", err)
 	}
