@@ -116,7 +116,3 @@ func vcsAddAll(t *testing.T, dir string) {
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "%s\n%s", out)
 }
-
-func logf(format string, args ...interface{}) {
-	_, _ = fmt.Fprintf(os.Stderr, format, args...)
-}

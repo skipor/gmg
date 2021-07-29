@@ -38,20 +38,6 @@ func getPackageKind(p *packages.Package) packageKind {
 
 func (k packageKind) String() string { return string(k) }
 
-func errorKindStr(k packages.ErrorKind) string {
-	switch k {
-	case packages.UnknownError:
-		return "unknown"
-	case packages.ListError:
-		return "list"
-	case packages.ParseError:
-		return "parse"
-	case packages.TypeError:
-		return "type"
-	}
-	return "unexpected"
-}
-
 func packagesWithoutTestExecutable(pkgs []*packages.Package) []*packages.Package {
 	for i, pkg := range pkgs {
 		if getPackageKind(pkg) == testExecutablePackageKind {
@@ -61,7 +47,7 @@ func packagesWithoutTestExecutable(pkgs []*packages.Package) []*packages.Package
 	return pkgs
 }
 
-func errorsNum(pkgs []*packages.Package) int {
+func packagesErrorsNum(pkgs []*packages.Package) int {
 	var n int
 	packages.Visit(pkgs, nil, func(pkg *packages.Package) {
 		n += len(pkg.Errors)

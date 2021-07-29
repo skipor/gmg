@@ -42,7 +42,12 @@ func generateAll(g *gogen.Generator, pkgs []*packages.Package, params *params) e
 			}
 		}
 		if obj == nil {
-			return fmt.Errorf("type '%s' not found in package '%s'", interfaceName, primaryPkg.PkgPath)
+			msg := fmt.Sprintf("type '%s' was not found in package '%s'", interfaceName, primaryPkg.PkgPath)
+			if packagesErrorsNum(pkgs) > 0 {
+				msg += ".\nPay attention to the package loading errors that were warned about above, they may be the cause of this."
+			}
+			return fmt.Errorf(msg)
+
 		}
 		objType := obj.Type().Underlying()
 		log.Debugf("%s is %T which type is %T, and underlying type is %T", interfaceName, obj, obj.Type(), obj.Type().Underlying())

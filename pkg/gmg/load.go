@@ -37,7 +37,7 @@ func loadPackages(log *zap.SugaredLogger, env *Environment, src string) ([]*pack
 		return nil, &loadErrs{pkgs[0].Errors}
 	}
 
-	if errNum := errorsNum(pkgs); errNum != 0 {
+	if errNum := packagesErrorsNum(pkgs); errNum != 0 {
 		str := printPackagesErrors(pkgs)
 		log.Warnf("Packages loaded with %v errors. Generation may fail, if type information was not able to load.\n%s", errNum, str)
 	}
@@ -82,7 +82,7 @@ func printPackagesErrors(pkgs []*packages.Package) string {
 			p("\t- %s\n", packagesErrorString(err))
 		}
 	})
-	return strings.TrimSpace(b.String())
+	return strings.TrimRight(b.String(), "\n")
 }
 
 func packagesErrorString(err packages.Error) string {
