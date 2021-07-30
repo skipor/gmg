@@ -392,10 +392,6 @@ func (ss stringSet) Add(s string) {
 	ss[s] = struct{}{}
 }
 
-func writeFile(FS afero.Fs, name string, content []byte) error {
-	return nil
-}
-
 type parsedFile struct {
 	ast  *ast.File
 	fset *token.FileSet
@@ -424,7 +420,7 @@ func linesNumIndent(data []byte) int {
 	linesNum := bytes.Count(data, []byte("\n")) + 1
 	ident := 1
 	maxLinesIdent := 10
-	for ; maxLinesIdent <= linesNum; {
+	for maxLinesIdent <= linesNum {
 		ident += 1
 		maxLinesIdent *= 10
 	}

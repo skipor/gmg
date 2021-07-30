@@ -1,6 +1,8 @@
 package gmg
 
 import (
+	"fmt"
+	"go/format"
 	"os/exec"
 	"sort"
 	"strings"
@@ -17,9 +19,30 @@ var x = packagestest.Modules
 type M = packagestest.Module
 
 func newTester(t *testing.T, modules ...M) *Tester {
+	for _, m := range modules {
+		formatModuleFiles(t, m)
+	}
 	e := export(t, modules...)
 	return &Tester{
 		exported: e,
+	}
+}
+
+func formatModuleFiles(t *testing.T, m M) {
+	for path, data := range m.Files {
+		str, ok := data.(string)
+		if !ok {
+			continue
+		}
+		bytes, err := format.Source([]byte(str))
+		if err != nil {
+			if bytes == nil {
+				t.Fatalf("Module '%s' file '%s' format failed: %s", m.Name, path, err)
+			}
+			t.Logf("WARN: module '%s' file '%s' format errors: %s", m.Name, path, err)
+		}
+		fmt.Printf("After format:\n%s\n", bytes)
+		m.Files[path] = string(bytes)
 	}
 }
 
@@ -65,6 +88,9 @@ func (tr *Tester) GoGenerate(t *testing.T) *RunResult {
 		}
 		exitCode = err.ExitCode()
 	}
+
+	t.Logf("Tree of '%s' after '%s': %s", dir, cmd.String(), dirTree(t, dir))
+
 	afterFsMap := fsToMap(t, afero.NewBasePathFs(afero.NewOsFs(), dir))
 
 	for path := range beforeFsMap {
@@ -140,11 +166,14 @@ func exportedInfo(t *testing.T, e *packagestest.Exported) {
 	t.Logf("Work dir: %s", e.Config.Dir)
 	t.Logf("Temp dir: %s", e.Temp())
 	t.Logf("File located at: %s", e.File("pkg", "file.go"))
-	cmd := exec.Command("tree", e.Temp())
-	out, err := cmd.Output()
+	t.Logf("Tree of temp dir:\n%s", dirTree(t, e.Temp()))
+}
+
+func dirTree(t *testing.T, dir string) string {
+	tree := exec.Command("tree", dir)
+	treeOut, err := tree.Output()
 	require.NoError(t, err)
-	t.Logf("Tree of temp dir:\n%s", out)
-	//logGoEnv(t, e.Config.Env)
+	return string(treeOut)
 }
 
 type testWriter struct{ t *testing.T }
@@ -153,4 +182,20 @@ func (w testWriter) Write(p []byte) (int, error) {
 	w.t.Helper()
 	w.t.Logf("%s", p)
 	return len(p), nil
+}
+
+func formatGoFile(data []byte) ([]byte, error) {
+	return format.Source(data)
+	//fset := token.NewFileSet()
+	//ast, err := parser.ParseFile(fset, "", data, parser.ParseComments)
+	//if err != nil {
+	//	return nil, fmt.Errorf("parse: %w", err)
+	//}
+	//conf := printer.Config{Mode: printer.TabIndent | printer.UseSpaces, Tabwidth: 4}
+	//buf := &bytes.Buffer{}
+	//err = conf.Fprint(buf, fset, ast)
+	//if err != nil {
+	//	return nil, fmt.Errorf("format: %w", err)
+	//}
+	//return buf.Bytes(), nil
 }
