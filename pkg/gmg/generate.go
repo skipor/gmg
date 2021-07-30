@@ -31,10 +31,46 @@ func generateAll(g *gogen.Generator, pkgs []*packages.Package, params *params) e
 	var singleFile *gogen.File
 	if isSingleFile {
 		singleFile = g.NewFile(fileNamePattern, importPath)
-		genFileHead(singleFile, packageName, srcPrimaryPkg.PkgPath, params.Interfaces)
+		genFileHead(singleFile, packageName, srcPrimaryPkg.PkgPath, params.InterfaceNames)
 	}
 
-	for _, interfaceName := range params.Interfaces {
+	interfaceNames := params.InterfaceNames
+	ifaces, err := findInterfacesByNames(log, pkgs, interfaceNames)
+	if err != nil {
+		return err
+	}
+
+	for _, iface := range ifaces {
+		file := singleFile
+		if !isSingleFile {
+			baseName := strings.ReplaceAll(fileNamePattern, placeHolder, strcase.ToSnake(iface.name))
+			filePath := filepath.Join(dstDir, baseName)
+			file = g.NewFile(filePath, importPath)
+			genFileHead(file, packageName, srcPrimaryPkg.PkgPath, []string{iface.name})
+		}
+		generate(log, file, generateParams{
+			InterfaceName: iface.name,
+			Interface:     iface.typ,
+			PackagePath:   srcPrimaryPkg.PkgPath,
+		})
+
+	}
+	return nil
+}
+
+func findInterfaces(pkgs []*packages.Package, params *params) ([]namedInterface, error) {
+	log := params.Log
+	if len(params.InterfaceNames) != 0 {
+		return findInterfacesByNames(log, pkgs, params.InterfaceNames)
+	}
+
+	panic("NIY")
+}
+
+func findInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string) ([]namedInterface, error) {
+	srcPrimaryPkg := pkgs[0]
+	var ifaces []namedInterface
+	for _, interfaceName := range interfaceNames {
 		var obj types.Object
 		for _, pkg := range pkgs {
 			obj = pkg.Types.Scope().Lookup(interfaceName)
@@ -47,31 +83,26 @@ func generateAll(g *gogen.Generator, pkgs []*packages.Package, params *params) e
 			if packagesErrorsNum(pkgs) > 0 {
 				msg += ".\nPay attention to the package loading errors that were warned about above, they may be the cause of this."
 			}
-			return fmt.Errorf(msg)
-
+			return nil, fmt.Errorf(msg)
 		}
 		objType := obj.Type().Underlying()
 		log.Debugf("%s is %T which type is %T, and underlying type is %T", interfaceName, obj, obj.Type(), obj.Type().Underlying())
 		iface, ok := objType.(*types.Interface)
 		if !ok {
-			return fmt.Errorf("can mock only interfaces, but '%s' is %s", interfaceName, objType.String())
+			return nil, fmt.Errorf("can mock only interfaces, but '%s' is %s", interfaceName, objType.String())
 		}
 
-		file := singleFile
-		if !isSingleFile {
-			baseName := strings.ReplaceAll(fileNamePattern, placeHolder, strcase.ToSnake(interfaceName))
-			path := filepath.Join(dstDir, baseName)
-			file = g.NewFile(path, importPath)
-			genFileHead(file, packageName, srcPrimaryPkg.PkgPath, []string{interfaceName})
-		}
-
-		generate(log, file, generateParams{
-			InterfaceName: interfaceName,
-			Interface:     iface,
-			PackagePath:   srcPrimaryPkg.PkgPath,
+		ifaces = append(ifaces, namedInterface{
+			name: interfaceName,
+			typ:  iface,
 		})
 	}
-	return nil
+	return ifaces, nil
+}
+
+type namedInterface struct {
+	name string
+	typ  *types.Interface
 }
 
 func genFileHead(f *gogen.File, packageName string, src string, interfaceNames []string) {

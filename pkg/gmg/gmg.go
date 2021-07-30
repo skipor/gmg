@@ -73,24 +73,38 @@ func RealEnvironment() *Environment {
 var errExitZero = errors.New("should exit with zero code")
 
 type params struct {
-	Log        *zap.SugaredLogger
-	Interfaces []string
+	Log            *zap.SugaredLogger
+	InterfaceNames []string
 	// Source is Go package to search for interfaces. See flag description for details.
 	Source string
 	// Destination is directory or file relative path or pattern. See flag description for details.
 	Destination string
 	// Package is package name in generated files. See flag description for details.
-	Package string
-	GoEnv   goEnv
+	Package       string
+	GoGenerateEnv goGenerateEnv
 }
 
-type goEnv struct {
+type goGenerateEnv struct {
 	// GOLINE set by 'go generate' to line number of the directive in the source file.
 	GOLINE string
 	// GOFILE set by 'go generate' to the base name of the file.
 	GOFILE string
 	// GOPACKAGE the name of the package of the file containing the directive.
 	GOPACKAGE string
+}
+
+func (e goGenerateEnv) isSet() bool {
+	return e.GOLINE != "" && e.GOFILE != "" && e.GOPACKAGE != ""
+}
+
+func (e goGenerateEnv) packageKind() packageKind {
+	if strings.HasSuffix(e.GOPACKAGE, "_test") {
+		return blackBoxTestPackageKind
+	}
+	if strings.HasSuffix(e.GOFILE, "_test.go") {
+		return testPackageKind
+	}
+	return primaryPackageKind
 }
 
 func loadParams(env *Environment) (*params, error) {
@@ -169,26 +183,25 @@ func loadParams(env *Environment) (*params, error) {
 	))
 
 	interfaces := fs.Args()
-	goEnv := goEnv{
+	goGenerateEnv := goGenerateEnv{
 		GOLINE:    env.Getenv("GOLINE"),
 		GOFILE:    env.Getenv("GOFILE"),
 		GOPACKAGE: env.Getenv("GOPACKAGE"),
 	}
-	log.Sugar().Debugf("Go env: %+v", goEnv)
-	isGoGenerateRun := goEnv.GOFILE != "" && goEnv.GOLINE != ""
-	if !isGoGenerateRun && len(interfaces) == 0 {
+	log.Sugar().Debugf("Go env: %+v", goGenerateEnv)
+	if !goGenerateEnv.isSet() && len(interfaces) == 0 {
 		return nil, fmt.Errorf("pass interface names as arguments.\n" +
 			"Or put `//go:generate gmg` comment before interface declaration and run `go generate`.\n" +
 			"Or run `gmg --help` to get more information.")
 	}
 
 	return &params{
-		Log:         log.Sugar(),
-		Source:      src,
-		Destination: path.Clean(dst),
-		Package:     pkg,
-		Interfaces:  interfaces,
-		GoEnv:       goEnv,
+		Log:            log.Sugar(),
+		Source:         src,
+		Destination:    path.Clean(dst),
+		Package:        pkg,
+		InterfaceNames: interfaces,
+		GoGenerateEnv:  goGenerateEnv,
 	}, nil
 
 }
