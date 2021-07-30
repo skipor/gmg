@@ -1,7 +1,6 @@
 package gmg
 
 import (
-	"fmt"
 	"go/format"
 	"os/exec"
 	"sort"
@@ -41,7 +40,6 @@ func formatModuleFiles(t *testing.T, m M) {
 			}
 			t.Logf("WARN: module '%s' file '%s' format errors: %s", m.Name, path, err)
 		}
-		fmt.Printf("After format:\n%s\n", bytes)
 		m.Files[path] = string(bytes)
 	}
 }
@@ -89,7 +87,7 @@ func (tr *Tester) GoGenerate(t *testing.T) *RunResult {
 		exitCode = err.ExitCode()
 	}
 
-	t.Logf("Tree of '%s' after '%s': %s", dir, cmd.String(), dirTree(t, dir))
+	t.Logf("Workdir tree after '%s':\n%s", cmd.String(), dirTree(t, dir))
 
 	afterFsMap := fsToMap(t, afero.NewBasePathFs(afero.NewOsFs(), dir))
 

@@ -17,21 +17,21 @@ import (
 
 func generateAll(g *gogen.Generator, pkgs []*packages.Package, params *params) error {
 	log := params.Log
-	primaryPkg := pkgs[0]
+	srcPrimaryPkg := pkgs[0]
 	dstDir := strings.TrimPrefix(params.Destination, ".")
 	fileNamePattern := placeHolder + ".go"
 	if path.Ext(dstDir) == ".go" {
 		dstDir, fileNamePattern = path.Split(dstDir)
 	}
-	dstDir = strings.ReplaceAll(dstDir, placeHolder, primaryPkg.Name)
-	packageName := strings.ReplaceAll(params.Package, placeHolder, primaryPkg.Name)
-	importPath := gogen.ImportPath(path.Join(primaryPkg.PkgPath, dstDir))
+	dstDir = strings.ReplaceAll(dstDir, placeHolder, srcPrimaryPkg.Name)
+	packageName := strings.ReplaceAll(params.Package, placeHolder, srcPrimaryPkg.Name)
+	importPath := gogen.ImportPath(path.Join(srcPrimaryPkg.PkgPath, dstDir))
 
 	isSingleFile := !strings.Contains(fileNamePattern, placeHolder)
 	var singleFile *gogen.File
 	if isSingleFile {
 		singleFile = g.NewFile(fileNamePattern, importPath)
-		genFileHead(singleFile, packageName, primaryPkg.PkgPath, params.Interfaces)
+		genFileHead(singleFile, packageName, srcPrimaryPkg.PkgPath, params.Interfaces)
 	}
 
 	for _, interfaceName := range params.Interfaces {
@@ -43,7 +43,7 @@ func generateAll(g *gogen.Generator, pkgs []*packages.Package, params *params) e
 			}
 		}
 		if obj == nil {
-			msg := fmt.Sprintf("type '%s' was not found in package '%s'", interfaceName, primaryPkg.PkgPath)
+			msg := fmt.Sprintf("type '%s' was not found in package '%s'", interfaceName, srcPrimaryPkg.PkgPath)
 			if packagesErrorsNum(pkgs) > 0 {
 				msg += ".\nPay attention to the package loading errors that were warned about above, they may be the cause of this."
 			}
@@ -62,13 +62,13 @@ func generateAll(g *gogen.Generator, pkgs []*packages.Package, params *params) e
 			baseName := strings.ReplaceAll(fileNamePattern, placeHolder, strcase.ToSnake(interfaceName))
 			path := filepath.Join(dstDir, baseName)
 			file = g.NewFile(path, importPath)
-			genFileHead(file, packageName, primaryPkg.PkgPath, []string{interfaceName})
+			genFileHead(file, packageName, srcPrimaryPkg.PkgPath, []string{interfaceName})
 		}
 
 		generate(log, file, generateParams{
 			InterfaceName: interfaceName,
 			Interface:     iface,
-			PackagePath:   primaryPkg.PkgPath,
+			PackagePath:   srcPrimaryPkg.PkgPath,
 		})
 	}
 	return nil
