@@ -1,6 +1,7 @@
 package gmg
 
 import (
+	"go/format"
 	"os/exec"
 	"sort"
 	"strings"
@@ -17,13 +18,33 @@ var x = packagestest.Modules
 type M = packagestest.Module
 
 func newTester(t *testing.T, modules ...M) *Tester {
+	for _, m := range modules {
+		formatModuleFiles(t, m)
+	}
 	e := export(t, modules...)
 	return &Tester{
 		exported: e,
 	}
 }
 
-func (tr *Tester) run(t *testing.T, args ...string) *RunResult {
+func formatModuleFiles(t *testing.T, m M) {
+	for path, data := range m.Files {
+		str, ok := data.(string)
+		if !ok {
+			continue
+		}
+		bytes, err := format.Source([]byte(str))
+		if err != nil {
+			if bytes == nil {
+				t.Fatalf("Module '%s' file '%s' format failed: %s", m.Name, path, err)
+			}
+			t.Logf("WARN: module '%s' file '%s' format errors: %s", m.Name, path, err)
+		}
+		m.Files[path] = string(bytes)
+	}
+}
+
+func (tr *Tester) Gmg(t *testing.T, args ...string) *RunResult {
 	args = append(args, "--debug")
 	t.Logf("Run: gmg %s", strings.Join(args, " "))
 	FS := &afero.MemMapFs{}
@@ -43,16 +64,69 @@ func (tr *Tester) run(t *testing.T, args ...string) *RunResult {
 	}
 }
 
-func (tr *Tester) Succeed(t *testing.T, args ...string) *RunResult {
-	res := tr.run(t, args...)
-	require.Zero(t, res.ExitCode)
-	return res
+func (tr *Tester) GoGenerate(t *testing.T) *RunResult {
+	t.Helper()
+	dir := tr.exported.Config.Dir
+	cmd := exec.Command("go", "generate", "./...")
+	w := testWriter{t}
+	cmd.Stdout = w
+	cmd.Stderr = w
+	cmd.Dir = dir
+	cmd.Env = append(tr.exported.Config.Env, "GMG_DEBUG=true")
+
+	beforeFsMap := fsToMap(t, afero.NewBasePathFs(afero.NewOsFs(), dir))
+
+	t.Logf("Run: %s", cmd.String())
+	err := cmd.Run()
+	var exitCode int
+	if err != nil {
+		err, ok := err.(*exec.ExitError)
+		if ok {
+			t.Fatalf("Unexpected run fail: %+v", err)
+		}
+		exitCode = err.ExitCode()
+	}
+
+	t.Logf("Workdir tree after '%s':\n%s", cmd.String(), dirTree(t, dir))
+
+	afterFsMap := fsToMap(t, afero.NewBasePathFs(afero.NewOsFs(), dir))
+
+	for path := range beforeFsMap {
+		_, ok := afterFsMap[path]
+		if !ok {
+			t.Fatalf("file '%s' removed after '%s' run", path, cmd.String())
+		}
+	}
+	changed := afero.NewMemMapFs().(*afero.MemMapFs)
+	for path, before := range afterFsMap {
+		after, ok := beforeFsMap[path]
+		if !ok || before != after {
+			err := afero.WriteFile(changed, path, []byte(after), 0644)
+			require.NoError(t, err)
+		}
+	}
+
+	return &RunResult{
+		t:        t,
+		ExitCode: exitCode,
+		FS:       changed,
+	}
 }
 
-func (tr *Tester) Fail(t *testing.T, args ...string) *RunResult {
-	res := tr.run(t, args...)
-	require.NotZero(t, res.ExitCode)
-	return res
+type RunResult struct {
+	t        *testing.T
+	ExitCode int
+	FS       *afero.MemMapFs
+}
+
+func (r *RunResult) Succeed() *RunResult {
+	require.Zero(r.t, r.ExitCode)
+	return r
+}
+
+func (r *RunResult) Fail() *RunResult {
+	require.NotZero(r.t, r.ExitCode)
+	return r
 }
 
 func (r *RunResult) Files(expectedFiles ...string) *RunResult {
@@ -75,12 +149,6 @@ func (r *RunResult) Golden() *RunResult {
 	return r
 }
 
-type RunResult struct {
-	t        *testing.T
-	ExitCode int
-	FS       *afero.MemMapFs
-}
-
 type Tester struct {
 	exported *packagestest.Exported
 }
@@ -96,11 +164,14 @@ func exportedInfo(t *testing.T, e *packagestest.Exported) {
 	t.Logf("Work dir: %s", e.Config.Dir)
 	t.Logf("Temp dir: %s", e.Temp())
 	t.Logf("File located at: %s", e.File("pkg", "file.go"))
-	cmd := exec.Command("tree", e.Temp())
-	out, err := cmd.Output()
+	t.Logf("Tree of temp dir:\n%s", dirTree(t, e.Temp()))
+}
+
+func dirTree(t *testing.T, dir string) string {
+	tree := exec.Command("tree", dir)
+	treeOut, err := tree.Output()
 	require.NoError(t, err)
-	t.Logf("Tree of temp dir:\n%s", out)
-	//logGoEnv(t, e.Config.Env)
+	return string(treeOut)
 }
 
 type testWriter struct{ t *testing.T }
@@ -109,4 +180,20 @@ func (w testWriter) Write(p []byte) (int, error) {
 	w.t.Helper()
 	w.t.Logf("%s", p)
 	return len(p), nil
+}
+
+func formatGoFile(data []byte) ([]byte, error) {
+	return format.Source(data)
+	//fset := token.NewFileSet()
+	//ast, err := parser.ParseFile(fset, "", data, parser.ParseComments)
+	//if err != nil {
+	//	return nil, fmt.Errorf("parse: %w", err)
+	//}
+	//conf := printer.Config{Mode: printer.TabIndent | printer.UseSpaces, Tabwidth: 4}
+	//buf := &bytes.Buffer{}
+	//err = conf.Fprint(buf, fset, ast)
+	//if err != nil {
+	//	return nil, fmt.Errorf("format: %w", err)
+	//}
+	//return buf.Bytes(), nil
 }

@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"path"
+	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/afero"
@@ -40,6 +42,21 @@ type Environment struct {
 	Fs afero.Fs
 }
 
+func (e *Environment) Getenv(key string) string {
+	for i := len(e.Env) - 1; i >= 0; i-- {
+		kv := e.Env[i]
+		split := strings.SplitN(kv, "=", 2)
+		k := split[0]
+		if k == key {
+			if len(split) != 2 {
+				panic(fmt.Sprintf("Environment.Env[%v]: expect 'key=value' format, but got: '%s'", k, kv))
+			}
+			return split[1]
+		}
+	}
+	return ""
+}
+
 func RealEnvironment() *Environment {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -57,14 +74,38 @@ func RealEnvironment() *Environment {
 var errExitZero = errors.New("should exit with zero code")
 
 type params struct {
-	Log        *zap.SugaredLogger
-	Interfaces []string
+	Log            *zap.SugaredLogger
+	InterfaceNames []string
 	// Source is Go package to search for interfaces. See flag description for details.
 	Source string
 	// Destination is directory or file relative path or pattern. See flag description for details.
 	Destination string
 	// Package is package name in generated files. See flag description for details.
-	Package string
+	Package       string
+	GoGenerateEnv goGenerateEnv
+}
+
+type goGenerateEnv struct {
+	// GOLINE set by 'go generate' to line number of the directive in the source file.
+	GOLINE int
+	// GOFILE set by 'go generate' to the base name of the file.
+	GOFILE string
+	// GOPACKAGE the name of the package of the file containing the directive.
+	GOPACKAGE string
+}
+
+func (e goGenerateEnv) isSet() bool {
+	return e.GOLINE != 0 && e.GOFILE != "" && e.GOPACKAGE != ""
+}
+
+func (e goGenerateEnv) packageKind() packageKind {
+	if strings.HasSuffix(e.GOPACKAGE, "_test") {
+		return blackBoxTestPackageKind
+	}
+	if strings.HasSuffix(e.GOFILE, "_test.go") {
+		return testPackageKind
+	}
+	return primaryPackageKind
 }
 
 func loadParams(env *Environment) (*params, error) {
@@ -112,7 +153,7 @@ func loadParams(env *Environment) (*params, error) {
 			"Examples:\n"+
 			"	mocks_{} # mockgen style\n"+
 			"	{}mocks # mockery style\n")
-	fs.BoolVar(&debug, "debug", false, "Verbose debug logging.")
+	fs.BoolVar(&debug, "debug", os.Getenv("GMG_DEBUG") != "", "Verbose debug logging.")
 	fs.BoolVar(&version, "version", false, "Show version and exit.")
 	err := fs.Parse(env.Args)
 	if err != nil {
@@ -143,16 +184,35 @@ func loadParams(env *Environment) (*params, error) {
 	))
 
 	interfaces := fs.Args()
-	if len(interfaces) == 0 {
-		return nil, fmt.Errorf("need one or more interface names passed as arguments")
+
+	var goLine int
+	if goLineStr := env.Getenv("GOLINE"); goLineStr != "" {
+		goLineInt64, err := strconv.ParseInt(goLineStr, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("GOLINE='%s'is not an integer: %w", goLineStr, err)
+		}
+		goLine = int(goLineInt64)
+	}
+
+	goGenerateEnv := goGenerateEnv{
+		GOLINE:    goLine,
+		GOFILE:    env.Getenv("GOFILE"),
+		GOPACKAGE: env.Getenv("GOPACKAGE"),
+	}
+	log.Sugar().Debugf("Go env: %+v", goGenerateEnv)
+	if !goGenerateEnv.isSet() && len(interfaces) == 0 {
+		return nil, fmt.Errorf("pass interface names as arguments.\n" +
+			"Or put `//go:generate gmg` comment before interface declaration and run `go generate`.\n" +
+			"Or run `gmg --help` to get more information.")
 	}
 
 	return &params{
-		Log:         log.Sugar(),
-		Source:      src,
-		Destination: path.Clean(dst),
-		Package:     pkg,
-		Interfaces:  interfaces,
+		Log:            log.Sugar(),
+		Source:         src,
+		Destination:    path.Clean(dst),
+		Package:        pkg,
+		InterfaceNames: interfaces,
+		GoGenerateEnv:  goGenerateEnv,
 	}, nil
 
 }
@@ -169,6 +229,7 @@ const placeHolder = "{}"
 
 func run(env *Environment, params *params) error {
 	log := params.Log
+	log.Debugf("gmg version %s %s/%s", gmgVersion, runtime.GOOS, runtime.GOARCH)
 	pkgs, err := loadPackages(log, env, params.Source)
 	if err != nil {
 		errStr := err.Error()

@@ -17,59 +17,42 @@ import (
 
 func generateAll(g *gogen.Generator, pkgs []*packages.Package, params *params) error {
 	log := params.Log
-	primaryPkg := pkgs[0]
+	srcPrimaryPkg := pkgs[0]
 	dstDir := strings.TrimPrefix(params.Destination, ".")
 	fileNamePattern := placeHolder + ".go"
 	if path.Ext(dstDir) == ".go" {
 		dstDir, fileNamePattern = path.Split(dstDir)
 	}
-	dstDir = strings.ReplaceAll(dstDir, placeHolder, primaryPkg.Name)
-	packageName := strings.ReplaceAll(params.Package, placeHolder, primaryPkg.Name)
-	importPath := gogen.ImportPath(path.Join(primaryPkg.PkgPath, dstDir))
+	dstDir = strings.ReplaceAll(dstDir, placeHolder, srcPrimaryPkg.Name)
+	packageName := strings.ReplaceAll(params.Package, placeHolder, srcPrimaryPkg.Name)
+	importPath := gogen.ImportPath(path.Join(srcPrimaryPkg.PkgPath, dstDir))
 
 	isSingleFile := !strings.Contains(fileNamePattern, placeHolder)
 	var singleFile *gogen.File
 	if isSingleFile {
 		singleFile = g.NewFile(fileNamePattern, importPath)
-		genFileHead(singleFile, packageName, primaryPkg.PkgPath, params.Interfaces)
+		genFileHead(singleFile, packageName, srcPrimaryPkg.PkgPath, params.InterfaceNames)
 	}
 
-	for _, interfaceName := range params.Interfaces {
-		var obj types.Object
-		for _, pkg := range pkgs {
-			obj = pkg.Types.Scope().Lookup(interfaceName)
-			if obj != nil {
-				break
-			}
-		}
-		if obj == nil {
-			msg := fmt.Sprintf("type '%s' was not found in package '%s'", interfaceName, primaryPkg.PkgPath)
-			if packagesErrorsNum(pkgs) > 0 {
-				msg += ".\nPay attention to the package loading errors that were warned about above, they may be the cause of this."
-			}
-			return fmt.Errorf(msg)
+	ifaces, err := findInterfaces(pkgs, params)
+	if err != nil {
+		return err
+	}
 
-		}
-		objType := obj.Type().Underlying()
-		log.Debugf("%s is %T which type is %T, and underlying type is %T", interfaceName, obj, obj.Type(), obj.Type().Underlying())
-		iface, ok := objType.(*types.Interface)
-		if !ok {
-			return fmt.Errorf("can mock only interfaces, but '%s' is %s", interfaceName, objType.String())
-		}
-
+	for _, iface := range ifaces {
 		file := singleFile
 		if !isSingleFile {
-			baseName := strings.ReplaceAll(fileNamePattern, placeHolder, strcase.ToSnake(interfaceName))
-			path := filepath.Join(dstDir, baseName)
-			file = g.NewFile(path, importPath)
-			genFileHead(file, packageName, primaryPkg.PkgPath, []string{interfaceName})
+			baseName := strings.ReplaceAll(fileNamePattern, placeHolder, strcase.ToSnake(iface.name))
+			filePath := filepath.Join(dstDir, baseName)
+			file = g.NewFile(filePath, importPath)
+			genFileHead(file, packageName, srcPrimaryPkg.PkgPath, []string{iface.name})
 		}
-
 		generate(log, file, generateParams{
-			InterfaceName: interfaceName,
-			Interface:     iface,
-			PackagePath:   primaryPkg.PkgPath,
+			InterfaceName: iface.name,
+			Interface:     iface.typ,
+			PackagePath:   srcPrimaryPkg.PkgPath,
 		})
+
 	}
 	return nil
 }

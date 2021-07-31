@@ -2,16 +2,13 @@ package examples
 
 import (
 	"flag"
-	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/skipor/gmg/internal/testutil"
 )
 
 var update bool
@@ -21,15 +18,7 @@ func init() {
 }
 
 func TestExamplesGoGenerate(t *testing.T) {
-	gmg, err := buildGmg()
-	if err != nil {
-		require.NoError(t, err, "gmg build")
-	}
-	defer gmg.cleanup()
-	err = os.Setenv("PATH", filepath.Dir(gmg.executable)+":"+os.Getenv("PATH"))
-	if err != nil {
-		require.NoError(t, err, "PATH set")
-	}
+	testutil.TestInstallGmgOnce(t)
 
 	entries, err := os.ReadDir(".")
 	require.NoError(t, err, "test dir read")
@@ -46,6 +35,7 @@ func TestExamplesGoGenerate(t *testing.T) {
 				}
 			}
 			cmd := exec.Command("go", "generate", "./"+dir+"/...")
+			cmd.Env = append(os.Environ(), "GMG_DEBUG=true")
 			out, err := cmd.CombinedOutput()
 			t.Logf("%s\n%s", cmd.String(), out)
 			require.NoError(t, err, "go generate failed")
@@ -59,35 +49,6 @@ func TestExamplesGoGenerate(t *testing.T) {
 			}
 		})
 	}
-
-}
-
-type buildResult struct {
-	executable string
-	cleanup    func()
-}
-
-func buildGmg() (res *buildResult, err error) {
-	tmp, err := ioutil.TempDir("", "gmg_examples_test_*")
-	if err != nil {
-		return nil, fmt.Errorf("tmp dir: %+v", err)
-	}
-	executable := filepath.Join(tmp, "gmg")
-	if runtime.GOOS == "windows" {
-		executable += ".exe"
-	}
-	cmd := exec.Command("go", "build", "-o", executable, "./..")
-	fmt.Printf("Building gmg: %s\n", cmd.String())
-	start := time.Now()
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("%s\n%w", out, err)
-	}
-	fmt.Printf("gmg build succeed in: %s\n", time.Since(start).Truncate(time.Millisecond))
-	return &buildResult{
-		executable: executable,
-		cleanup:    func() { _ = os.RemoveAll(tmp) },
-	}, nil
 }
 
 func vcsDiff(t *testing.T, dir string) string {

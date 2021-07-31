@@ -15,7 +15,7 @@ func TestTrivial(t *testing.T) {
 		},
 	})
 	tr.
-		Succeed(t, "Foo").
+		Gmg(t, "Foo").Succeed().
 		Golden()
 }
 
@@ -30,7 +30,7 @@ func TestTrivial_TestOnly(t *testing.T) {
 		},
 	})
 	tr.
-		Succeed(t, "Foo").
+		Gmg(t, "Foo").Succeed().
 		Golden()
 }
 
@@ -45,7 +45,7 @@ func TestTrivial_BlackBoxTestOnly(t *testing.T) {
 		},
 	})
 	tr.
-		Succeed(t, "Foo").
+		Gmg(t, "Foo").Succeed().
 		Golden()
 }
 
@@ -77,7 +77,7 @@ func TestSignatureCornerCases(t *testing.T) {
 		},
 	})
 	tr.
-		Succeed(t, "Foo").
+		Gmg(t, "Foo").Succeed().
 		Golden()
 }
 
@@ -90,11 +90,11 @@ func TestIoWriter(t *testing.T) {
 			`,
 		},
 	}).
-		Succeed(t, "--src", "io", "Writer").
+		Gmg(t, "--src", "io", "Writer").Succeed().
 		Golden()
 }
 
-func TestTrivial_RelativeSrc(t *testing.T) {
+func Test_RelativeSrc(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -104,7 +104,25 @@ func TestTrivial_RelativeSrc(t *testing.T) {
 			`,
 		},
 	})
-	tr.Succeed(t, "--src", "./sub", "Foo").Files("mocks/foo.go")
+	tr.Gmg(t, "--src", "./sub", "Foo").Files("mocks/foo.go").Succeed()
+}
+
+func TestGoGenerateImplicitName(t *testing.T) {
+	tr := newTester(t, M{
+		Name: "pkg",
+		Files: map[string]interface{}{
+			"file.go": /* language=go */ `
+			package pkg
+
+			//go:generate gmg
+
+			type Foo interface { Bar() string }
+			`,
+		},
+	})
+	tr.
+		GoGenerate(t).Succeed().
+		Files("mocks/foo.go")
 }
 
 func TestPackageNotFound(t *testing.T) {
@@ -117,7 +135,7 @@ func TestPackageNotFound(t *testing.T) {
 			`,
 		},
 	})
-	tr.Fail(t, "--src", "./not_found", "Foo")
+	tr.Gmg(t, "--src", "./not_found", "Foo").Fail()
 }
 
 func TestPackageNameConflictSucceed(t *testing.T) {
@@ -133,7 +151,7 @@ func TestPackageNameConflictSucceed(t *testing.T) {
 			`,
 		},
 	})
-	tr.Succeed(t, "Foo")
+	tr.Gmg(t, "Foo").Files("mocks/foo.go").Succeed()
 }
 
 func TestPackageNameConflictFail(t *testing.T) {
@@ -149,5 +167,5 @@ func TestPackageNameConflictFail(t *testing.T) {
 			`,
 		},
 	})
-	tr.Fail(t, "Foo")
+	tr.Gmg(t, "Foo").Fail()
 }
