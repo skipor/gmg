@@ -36,6 +36,15 @@ func getPackageKind(p *packages.Package) packageKind {
 	return testPackageKind
 }
 
+func getPackageByKind(pkgs []*packages.Package, k packageKind) *packages.Package {
+	for _, pkg := range pkgs {
+		if getPackageKind(pkg) == k {
+			return pkg
+		}
+	}
+	return nil
+}
+
 func (k packageKind) String() string { return string(k) }
 
 func packagesWithoutTestExecutable(pkgs []*packages.Package) []*packages.Package {

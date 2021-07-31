@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/afero"
@@ -86,7 +87,7 @@ type params struct {
 
 type goGenerateEnv struct {
 	// GOLINE set by 'go generate' to line number of the directive in the source file.
-	GOLINE string
+	GOLINE int
 	// GOFILE set by 'go generate' to the base name of the file.
 	GOFILE string
 	// GOPACKAGE the name of the package of the file containing the directive.
@@ -94,7 +95,7 @@ type goGenerateEnv struct {
 }
 
 func (e goGenerateEnv) isSet() bool {
-	return e.GOLINE != "" && e.GOFILE != "" && e.GOPACKAGE != ""
+	return e.GOLINE != 0 && e.GOFILE != "" && e.GOPACKAGE != ""
 }
 
 func (e goGenerateEnv) packageKind() packageKind {
@@ -183,8 +184,18 @@ func loadParams(env *Environment) (*params, error) {
 	))
 
 	interfaces := fs.Args()
+
+	var goLine int
+	if goLineStr := env.Getenv("GOLINE"); goLineStr != "" {
+		goLineInt64, err := strconv.ParseInt(goLineStr, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("GOLINE='%s'is not an integer: %w", goLineStr, err)
+		}
+		goLine = int(goLineInt64)
+	}
+
 	goGenerateEnv := goGenerateEnv{
-		GOLINE:    env.Getenv("GOLINE"),
+		GOLINE:    goLine,
 		GOFILE:    env.Getenv("GOFILE"),
 		GOPACKAGE: env.Getenv("GOPACKAGE"),
 	}
