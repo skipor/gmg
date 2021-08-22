@@ -107,24 +107,6 @@ func Test_RelativeSrc(t *testing.T) {
 	tr.Gmg(t, "--src", "./sub", "Foo").Files("mocks/foo.go").Succeed()
 }
 
-func TestGoGenerateImplicitName(t *testing.T) {
-	tr := newTester(t, M{
-		Name: "pkg",
-		Files: map[string]interface{}{
-			"file.go": /* language=go */ `
-			package pkg
-
-			//go:generate gmg
-
-			type Foo interface { Bar() string }
-			`,
-		},
-	})
-	tr.
-		GoGenerate(t).Succeed().
-		Files("mocks/foo.go")
-}
-
 func TestPackageNotFound(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
@@ -168,4 +150,85 @@ func TestPackageNameConflictFail(t *testing.T) {
 		},
 	})
 	tr.Gmg(t, "Foo").Fail()
+}
+
+func TestGoGenerate_ExplicitName(t *testing.T) {
+	tr := newTester(t, M{
+		Name: "pkg",
+		Files: map[string]interface{}{
+			"file.go": /* language=go */ `
+			package pkg
+
+			//go:generate gmg Foo
+
+			type Baz interface { Qux() }
+			type Foo interface { Bar() }
+			`,
+		},
+	})
+	tr.GoGenerate(t).Succeed().Files("mocks/foo.go")
+}
+
+func TestGoGenerate_ImplicitName(t *testing.T) {
+	tr := newTester(t, M{
+		Name: "pkg",
+		Files: map[string]interface{}{
+			"file.go": /* language=go */ `
+			package pkg
+			//go:generate gmg
+			type Foo interface { Bar() string }
+			`,
+		},
+	})
+	tr.GoGenerate(t).Succeed().Files("mocks/foo.go")
+}
+
+func TestGoGenerate_ImplicitName_BeforeTypeDecl(t *testing.T) {
+	tr := newTester(t, M{
+		Name: "pkg",
+		Files: map[string]interface{}{
+			"file.go": /* language=go */ `
+			package pkg
+			//go:generate gmg
+			type (
+				Foo interface { Bar() string }
+			)
+			`,
+		},
+	})
+	tr.GoGenerate(t).Succeed().Files("mocks/foo.go")
+}
+
+func TestGoGenerate_ImplicitName_Fail_AtEndOfTypeDecl(t *testing.T) {
+	tr := newTester(t, M{
+		Name: "pkg",
+		Files: map[string]interface{}{
+			"file.go": /* language=go */ `
+			package pkg
+
+			type (
+				Foo interface { Bar() string }
+			//go:generate gmg
+			)
+			`,
+		},
+	})
+	tr.GoGenerate(t).Fail()
+}
+
+func TestGoGenerate_ImplicitName_Fail_FuncDecl(t *testing.T) {
+	tr := newTester(t, M{
+		Name: "pkg",
+		Files: map[string]interface{}{
+			"file.go": /* language=go */ `
+			package pkg
+
+			//go:generate gmg
+
+			func Baz() {}
+			type Foo interface { Bar() string }
+			`,
+		},
+	})
+	tr.GoGenerate(t).Fail()
 }
