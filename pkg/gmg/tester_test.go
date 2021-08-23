@@ -21,7 +21,7 @@ type M = packagestest.Module
 
 func newTester(t *testing.T, modules ...M) *Tester {
 	t.Helper()
-	//t.Parallel() // TODO
+	t.Parallel()
 	for _, m := range modules {
 		formatModuleFiles(t, m)
 	}
@@ -76,8 +76,7 @@ func (tr *Tester) Gmg(t *testing.T, args ...string) *RunResult {
 
 func (tr *Tester) GoGenerate(t *testing.T) *RunResult {
 	t.Helper()
-	err := testutil.InstallGmgOnce()
-	require.NoError(t, err, "gmg install failed")
+	PATH := testutil.TestInstallGmgOnce(t)
 
 	dir := tr.exported.Config.Dir
 	cmd := exec.Command("go", "generate", "-v", "-x", "./...")
@@ -85,12 +84,12 @@ func (tr *Tester) GoGenerate(t *testing.T) *RunResult {
 	cmd.Stdout = w
 	cmd.Stderr = w
 	cmd.Dir = dir
-	cmd.Env = append(tr.exported.Config.Env, "GMG_DEBUG=true")
+	cmd.Env = append(tr.exported.Config.Env, "GMG_DEBUG=true", PATH)
 
 	beforeFsMap := fsToMap(t, afero.NewBasePathFs(afero.NewOsFs(), dir))
 
 	t.Logf("Run: %s", cmd.String())
-	err = cmd.Run()
+	err := cmd.Run()
 	var exitCode int
 	if err != nil {
 		err, ok := err.(*exec.ExitError)

@@ -15,24 +15,30 @@ var installErr error
 var installOnce sync.Once
 
 // InstallGmgOnce installs gmg from source to temporary dir and adds it to PATH for current process.
-func InstallGmgOnce() error {
+func InstallGmgOnce() (string, error) {
 	installOnce.Do(func() {
 		installErr = goInstallGmg()
 	})
-	return installErr
+	if installErr != nil {
+		return "", installErr
+	}
+	return "PATH=" + tmpGobin + ":" + os.Getenv("PATH"), nil
 }
 
-func TestInstallGmgOnce(t *testing.T) {
+func TestInstallGmgOnce(t *testing.T) string {
 	t.Helper()
-	err := InstallGmgOnce()
+	path, err := InstallGmgOnce()
 	if err != nil {
 		t.Fatalf("gmg install failed:\n%s", err)
 	}
+	return path
 }
 
+var tmpGobin string
+
 func goInstallGmg() error {
+	tmpGobin = filepath.Join(os.TempDir(), "gmg_test")
 	// Use stable tmp dir, to cache binary between different test packages and runs.
-	tmpGobin := filepath.Join(os.TempDir(), "gmg_test")
 	err := os.MkdirAll(tmpGobin, 0755)
 	if err != nil {
 		return err
@@ -51,9 +57,5 @@ func goInstallGmg() error {
 		return fmt.Errorf("%s:\n%s\n%w", cmd.String(), out, err)
 	}
 	fmt.Printf("gmg install succeed in: %s\n", time.Since(start).Truncate(time.Millisecond))
-	err = os.Setenv("PATH", tmpGobin+":"+os.Getenv("PATH"))
-	if err != nil {
-		return fmt.Errorf("PATH set: %s", err)
-	}
 	return nil
 }

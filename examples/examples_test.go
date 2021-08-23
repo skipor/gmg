@@ -18,8 +18,7 @@ func init() {
 }
 
 func TestExamplesGoGenerate(t *testing.T) {
-	testutil.TestInstallGmgOnce(t)
-
+	PATH := testutil.TestInstallGmgOnce(t)
 	entries, err := os.ReadDir(".")
 	require.NoError(t, err, "test dir read")
 	for _, ent := range entries {
@@ -35,7 +34,7 @@ func TestExamplesGoGenerate(t *testing.T) {
 				}
 			}
 			cmd := exec.Command("go", "generate", "./"+dir+"/...")
-			cmd.Env = append(os.Environ(), "GMG_DEBUG=true")
+			cmd.Env = append(os.Environ(), "GMG_DEBUG=true", PATH)
 			out, err := cmd.CombinedOutput()
 			t.Logf("%s\n%s", cmd.String(), out)
 			require.NoError(t, err, "go generate failed")
