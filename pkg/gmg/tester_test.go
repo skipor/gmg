@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/go/packages/packagestest"
+
+	"github.com/skipor/gmg/internal/testutil"
 )
 
 var x = packagestest.Modules
@@ -18,6 +20,8 @@ var x = packagestest.Modules
 type M = packagestest.Module
 
 func newTester(t *testing.T, modules ...M) *Tester {
+	t.Helper()
+	t.Parallel()
 	for _, m := range modules {
 		formatModuleFiles(t, m)
 	}
@@ -57,22 +61,30 @@ func (tr *Tester) Gmg(t *testing.T, args ...string) *RunResult {
 	}
 	exitCode := Main(env)
 
-	return &RunResult{
+	res := &RunResult{
 		t:        t,
 		ExitCode: exitCode,
 		FS:       FS,
 	}
+	t.Cleanup(func() {
+		if !res.consumed {
+			t.Errorf("no run result assertion called for 'gmg %s'", strings.Join(args, " "))
+		}
+	})
+	return res
 }
 
 func (tr *Tester) GoGenerate(t *testing.T) *RunResult {
 	t.Helper()
+	PATH := testutil.TestInstallGmgOnce(t)
+
 	dir := tr.exported.Config.Dir
-	cmd := exec.Command("go", "generate", "./...")
+	cmd := exec.Command("go", "generate", "-v", "-x", "./...")
 	w := testWriter{t}
 	cmd.Stdout = w
 	cmd.Stderr = w
 	cmd.Dir = dir
-	cmd.Env = append(tr.exported.Config.Env, "GMG_DEBUG=true")
+	cmd.Env = append(tr.exported.Config.Env, "GMG_DEBUG=true", PATH)
 
 	beforeFsMap := fsToMap(t, afero.NewBasePathFs(afero.NewOsFs(), dir))
 
@@ -81,7 +93,7 @@ func (tr *Tester) GoGenerate(t *testing.T) *RunResult {
 	var exitCode int
 	if err != nil {
 		err, ok := err.(*exec.ExitError)
-		if ok {
+		if !ok {
 			t.Fatalf("Unexpected run fail: %+v", err)
 		}
 		exitCode = err.ExitCode()
@@ -106,30 +118,41 @@ func (tr *Tester) GoGenerate(t *testing.T) *RunResult {
 		}
 	}
 
-	return &RunResult{
+	res := &RunResult{
 		t:        t,
 		ExitCode: exitCode,
 		FS:       changed,
 	}
+	t.Cleanup(func() {
+		if !res.consumed {
+			t.Errorf("no run result assertion called for '%s'", cmd)
+		}
+	})
+	return res
 }
 
 type RunResult struct {
-	t        *testing.T
+	t *testing.T
+	// consumed set on Succeed or Fail assertion
+	consumed bool
 	ExitCode int
 	FS       *afero.MemMapFs
 }
 
 func (r *RunResult) Succeed() *RunResult {
+	r.consumed = true
 	require.Zero(r.t, r.ExitCode)
 	return r
 }
 
 func (r *RunResult) Fail() *RunResult {
+	r.consumed = true
 	require.NotZero(r.t, r.ExitCode)
 	return r
 }
 
 func (r *RunResult) Files(expectedFiles ...string) *RunResult {
+	r.t.Helper()
 	var actualFiles []string
 	for file := range fsToMap(r.t, r.FS) {
 		actualFiles = append(actualFiles, file)
@@ -145,6 +168,7 @@ func (r *RunResult) Files(expectedFiles ...string) *RunResult {
 }
 
 func (r *RunResult) Golden() *RunResult {
+	r.t.Helper()
 	golden.Dir(r.t, r.FS)
 	return r
 }
@@ -154,6 +178,7 @@ type Tester struct {
 }
 
 func export(t *testing.T, modules ...packagestest.Module) *packagestest.Exported {
+	t.Helper()
 	e := packagestest.Export(t, x, modules)
 	t.Cleanup(e.Cleanup)
 	exportedInfo(t, e)
@@ -161,6 +186,7 @@ func export(t *testing.T, modules ...packagestest.Module) *packagestest.Exported
 }
 
 func exportedInfo(t *testing.T, e *packagestest.Exported) {
+	t.Helper()
 	t.Logf("Work dir: %s", e.Config.Dir)
 	t.Logf("Temp dir: %s", e.Temp())
 	t.Logf("File located at: %s", e.File("pkg", "file.go"))
@@ -180,20 +206,4 @@ func (w testWriter) Write(p []byte) (int, error) {
 	w.t.Helper()
 	w.t.Logf("%s", p)
 	return len(p), nil
-}
-
-func formatGoFile(data []byte) ([]byte, error) {
-	return format.Source(data)
-	//fset := token.NewFileSet()
-	//ast, err := parser.ParseFile(fset, "", data, parser.ParseComments)
-	//if err != nil {
-	//	return nil, fmt.Errorf("parse: %w", err)
-	//}
-	//conf := printer.Config{Mode: printer.TabIndent | printer.UseSpaces, Tabwidth: 4}
-	//buf := &bytes.Buffer{}
-	//err = conf.Fprint(buf, fset, ast)
-	//if err != nil {
-	//	return nil, fmt.Errorf("format: %w", err)
-	//}
-	//return buf.Bytes(), nil
 }
