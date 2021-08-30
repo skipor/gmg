@@ -3,7 +3,6 @@ package gmg
 import (
 	"bytes"
 	"fmt"
-	"go/token"
 	"strings"
 
 	"go.uber.org/zap"
@@ -21,8 +20,6 @@ func loadPackages(log *zap.SugaredLogger, env *Environment, src string) ([]*pack
 			packages.NeedFiles | packages.NeedCompiledGoFiles,
 		Dir:        env.Dir,
 		Env:        env.Env,
-		ParseFile:  nil, // TODO(skipor): optimize - remove static functions, methods bodies, to accelerate type checking
-		Fset:       token.NewFileSet(),
 		Tests:      true,
 		BuildFlags: nil, // TODO(skipor)
 	}, src)

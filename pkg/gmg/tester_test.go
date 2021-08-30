@@ -3,6 +3,7 @@ package gmg
 import (
 	"go/format"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -33,6 +34,9 @@ func newTester(t *testing.T, modules ...M) *Tester {
 
 func formatModuleFiles(t *testing.T, m M) {
 	for path, data := range m.Files {
+		if filepath.Ext(path) != ".go" {
+			continue
+		}
 		str, ok := data.(string)
 		if !ok {
 			continue
