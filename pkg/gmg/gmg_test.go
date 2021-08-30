@@ -240,6 +240,7 @@ func TestGoGenerate_ImplicitPackageName_Deduce(t *testing.T) {
 			"file.go": /* language=go */ `
 			package pkg
 			//go:generate gmg
+			
 			type Foo interface { Bar() string }
 			`,
 			"mocks/doc.go": /* language=go */ `
@@ -257,6 +258,7 @@ func TestGoGenerate_ImplicitPackageName_NoGoFiles(t *testing.T) {
 			"file.go": /* language=go */ `
 			package pkg
 			//go:generate gmg
+			
 			type Foo interface { Bar() string }
 			`,
 			"mocks/some.txt": `
