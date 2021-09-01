@@ -14,26 +14,23 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-type namedInterface struct {
-	name string
-	typ  *types.Interface
-}
-
-func findInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string, goGenEnv goGenerateEnv) ([]namedInterface, error) {
+func findInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string, goGenEnv goGenerateEnv) ([]Interface, error) {
 	if len(interfaceNames) != 0 {
 		return findInterfacesByNames(log, pkgs, interfaceNames)
 	}
 	return findInterfaceCorrespondingToGoGenerateComment(log, pkgs, goGenEnv)
 }
 
-func findInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string) ([]namedInterface, error) {
+func findInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string) ([]Interface, error) {
 	srcPrimaryPkg := pkgs[0]
-	var ifaces []namedInterface
+	var ifaces []Interface
 	for _, interfaceName := range interfaceNames {
 		var obj types.Object
+		var objPkg *packages.Package
 		for _, pkg := range pkgs {
 			obj = pkg.Types.Scope().Lookup(interfaceName)
 			if obj != nil {
+				objPkg = pkg
 				break
 			}
 		}
@@ -51,15 +48,16 @@ func findInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, int
 			return nil, fmt.Errorf("can mock only interfaces, but '%s' is %s", interfaceName, objType.String())
 		}
 
-		ifaces = append(ifaces, namedInterface{
-			name: interfaceName,
-			typ:  iface,
+		ifaces = append(ifaces, Interface{
+			Name:      interfaceName,
+			PackageID: objPkg.ID,
+			Type:      iface,
 		})
 	}
 	return ifaces, nil
 }
 
-func findInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkgs []*packages.Package, goGenEnv goGenerateEnv) ([]namedInterface, error) {
+func findInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkgs []*packages.Package, goGenEnv goGenerateEnv) ([]Interface, error) {
 	pkg := getPackageByKind(pkgs, goGenEnv.packageKind())
 	if pkg == nil {
 		return nil, fmt.Errorf(
@@ -107,9 +105,10 @@ func findInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkgs 
 		)
 	}
 
-	return []namedInterface{{
-		name: typeName,
-		typ:  typ.Underlying().(*types.Interface),
+	return []Interface{{
+		Name:      typeName,
+		PackageID: pkg.ID,
+		Type:      typ.Underlying().(*types.Interface),
 	}}, nil
 }
 

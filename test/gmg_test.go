@@ -24,7 +24,7 @@ func TestTrivial_TestOnly(t *testing.T) {
 		Name: "pkg",
 		Files: map[string]interface{}{
 			"file_test.go": /* language=go */ `
-			package pkg
+			package mypkg
 			type Foo interface { Bar() string }
 			`,
 		},
@@ -38,8 +38,11 @@ func TestTrivial_BlackBoxTestOnly(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
+			"doc.go": /* language=go */ `
+			package mypkg
+			`,
 			"file_test.go": /* language=go */ `
-			package pkg_test
+			package mypkg_test
 			type Foo interface { Bar() string }
 			`,
 		},

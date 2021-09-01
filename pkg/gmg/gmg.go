@@ -2,268 +2,448 @@ package gmg
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"io"
-	"os"
-	"path"
-	"runtime"
-	"strconv"
-	"strings"
+	"go/types"
 
-	"github.com/spf13/afero"
-	"github.com/spf13/pflag"
+	"github.com/iancoleman/strcase"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
 	"github.com/skipor/gmg/pkg/gogen"
 )
 
-const gmgVersion = "v0.3.0"
-
-func Main(env *Environment) int {
-	params, err := loadParams(env)
-	if errors.Is(err, errExitZero) {
-		return 0
-	}
-	if err != nil {
-		return handleError(env, err)
-	}
-	err = run(env, params)
-	return handleError(env, err)
-}
-
-type Environment struct {
-	Args   []string
-	Stderr io.Writer
-	Dir    string
-	Env    []string
-	// Fs is for output only. Go tooling invoked under hood, that read real files.
-	Fs afero.Fs
-}
-
-func (e *Environment) Getenv(key string) string {
-	for i := len(e.Env) - 1; i >= 0; i-- {
-		kv := e.Env[i]
-		split := strings.SplitN(kv, "=", 2)
-		k := split[0]
-		if k == key {
-			if len(split) != 2 {
-				panic(fmt.Sprintf("Environment.Env[%v]: expect 'key=value' format, but got: '%s'", k, kv))
-			}
-			return split[1]
-		}
-	}
-	return ""
-}
-
-func RealEnvironment() *Environment {
-	dir, err := os.Getwd()
-	if err != nil {
-		panic(fmt.Sprintf("get workdir: %+v", err))
-	}
-	return &Environment{
-		Args:   os.Args[1:],
-		Stderr: os.Stderr,
-		Dir:    dir,
-		Fs:     afero.NewOsFs(),
-		Env:    os.Environ(),
+func NewGMG(log *zap.SugaredLogger) *GMG {
+	return &GMG{
+		log: log,
+		gen: gogen.NewGenerator(),
 	}
 }
 
-var errExitZero = errors.New("should exit with zero code")
-
-type params struct {
-	Log            *zap.SugaredLogger
-	InterfaceNames []string
-	// Source is Go package to search for interfaces. See flag description for details.
-	Source string
-	// Destination is directory or file relative path or pattern. See flag description for details.
-	Destination string
-	// Package is package name in generated files. See flag description for details.
-	Package       string
-	GoGenerateEnv goGenerateEnv
+type GMG struct {
+	log *zap.SugaredLogger
+	gen *gogen.Generator
 }
 
-type goGenerateEnv struct {
-	// GOLINE set by 'go generate' to line number of the directive in the source file.
-	GOLINE int
-	// GOFILE set by 'go generate' to the base name of the file.
-	GOFILE string
-	// GOPACKAGE the name of the package of the file containing the directive.
-	GOPACKAGE string
+type Interface struct {
+	Name      string
+	PackageID string
+	Type      *types.Interface
 }
 
-func (e goGenerateEnv) isSet() bool {
-	return e.GOLINE != 0 && e.GOFILE != "" && e.GOPACKAGE != ""
+type GenerateFileParams struct {
+	FilePath    string
+	ImportPath  string
+	PackageName string
+	Interfaces  []Interface
+	Options     GenerateOptions
 }
 
-func (e goGenerateEnv) packageKind() packageKind {
-	if strings.HasSuffix(e.GOPACKAGE, "_test") {
-		return blackBoxTestPackageKind
-	}
-	if strings.HasSuffix(e.GOFILE, "_test.go") {
-		return testPackageKind
-	}
-	return primaryPackageKind
+type GenerateOptions struct {
+	// TODO:
 }
 
-func loadParams(env *Environment) (*params, error) {
-	fs := pflag.NewFlagSet("gmg", pflag.ContinueOnError)
-	fs.PrintDefaults()
-	fs.Usage = func() {
-		b := &bytes.Buffer{}
-		p := func(format string, a ...interface{}) { _, _ = fmt.Fprintf(b, format, a...) }
-		p("gmg is type-safe, fast and handy alternative GoMock generator. See details at: https://github.com/skipor/gmg\n")
-		p("\n")
-		p("Usage: gmg [--src <package path>] [--dst <file path>] [--pkg <package name>] <interface name> [<interface name> ...]\n\n")
-		p("Flags:\n%s", fs.FlagUsages())
-		_, _ = b.WriteTo(env.Stderr)
+func (g *GMG) GenerateFile(p GenerateFileParams) {
+	file := g.gen.NewFile(p.FilePath, gogen.ImportPath(p.ImportPath))
+	genFileHeadV2(file, p.PackageName, p.Interfaces)
+	for _, iface := range p.Interfaces {
+		generate(g.log, file, generateParams{
+			InterfaceName: iface.Name,
+			Interface:     iface.Type,
+			PackagePath:   iface.PackageID,
+		})
 	}
-	var (
-		pkg     string
-		src     string
-		dst     string
-		debug   bool
-		version bool
-	)
-	fs.StringVarP(&src, "src", "s", ".",
-		"Source Go package to search for interfaces. Absolute or relative.\n"+
-			"Maybe third-party or standard library package.\n"+
-			"Examples:\n"+
-			"	.\n"+
-			"	./relative/pkg\n"+
-			"	github.com/third-party/pkg\n"+
-			"	io\n",
-	)
-	fs.StringVarP(&dst, "dst", "d", "./mocks",
-		"Destination directory or file relative path or pattern.\n"+
-			"'{}' in directory path will be replaced with the source package name.\n"+
-			"'{}' in file name will be replaced with snake case interface name.\n"+
-			"If no file name pattern specified, then '{}.go' used by default.\n"+
-			"Examples:\n"+
-			"	./mocks\n"+
-			"	./{}mocks\n"+
-			"	./mocks/{}_gomock.go\n"+
-			"	./mocks_test.go # All mocks will be put to single file.\n",
-	)
-	fs.StringVarP(&pkg, "pkg", "p", "",
-		"Package name in generated files.\n"+
-			"'{}' will be replaced with source package name.\n"+
-			"By default, --dst package name used, or 'mocks_{}' if --dst package is not exist.\n"+
-			"Examples:\n"+
-			"	mocks_{} # mockgen style\n"+
-			"	{}mocks # mockery style\n")
-	fs.BoolVar(&debug, "debug", os.Getenv("GMG_DEBUG") != "", "Verbose debug logging.")
-	fs.BoolVar(&version, "version", false, "Show version and exit.")
-	err := fs.Parse(env.Args)
-	if err != nil {
-		if errors.Is(err, pflag.ErrHelp) {
-			return nil, errExitZero
-		}
-		return nil, fmt.Errorf("flags parse: %w", err)
-	}
-	if version {
-		_, _ = fmt.Fprintf(env.Stderr, "gmg %s\n", gmgVersion)
-		return nil, errExitZero
-	}
-
-	if strings.HasSuffix(src, "/...") {
-		return nil, fmt.Errorf("--src: can't use recursive pattern as a destination")
-	}
-
-	encConf := zap.NewDevelopmentEncoderConfig()
-	encConf.TimeKey = ""
-	level := zapcore.WarnLevel
-	if debug {
-		level = zapcore.DebugLevel
-	}
-	log := zap.New(zapcore.NewCore(
-		zapcore.NewConsoleEncoder(encConf),
-		zapcore.AddSync(env.Stderr),
-		level,
-	))
-
-	interfaces := fs.Args()
-
-	var goLine int
-	if goLineStr := env.Getenv("GOLINE"); goLineStr != "" {
-		goLineInt64, err := strconv.ParseInt(goLineStr, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("GOLINE='%s'is not an integer: %w", goLineStr, err)
-		}
-		goLine = int(goLineInt64)
-	}
-
-	goGenerateEnv := goGenerateEnv{
-		GOLINE:    goLine,
-		GOFILE:    env.Getenv("GOFILE"),
-		GOPACKAGE: env.Getenv("GOPACKAGE"),
-	}
-	log.Sugar().Debugf("Go env: %+v", goGenerateEnv)
-	if !goGenerateEnv.isSet() && len(interfaces) == 0 {
-		return nil, fmt.Errorf("pass interface names as arguments.\n" +
-			"Or put `//go:generate gmg` comment before interface declaration and run `go generate`.\n" +
-			"Or run `gmg --help` to get more information.")
-	}
-
-	return &params{
-		Log:            log.Sugar(),
-		Source:         src,
-		Destination:    path.Clean(dst),
-		Package:        pkg,
-		InterfaceNames: interfaces,
-		GoGenerateEnv:  goGenerateEnv,
-	}, nil
-
 }
 
-func handleError(env *Environment, err error) int {
-	if err == nil {
-		return 0
-	}
-	_, _ = fmt.Fprintf(env.Stderr, "ERROR: %+v\n", err)
-	return 1
-}
-
-const placeHolder = "{}"
-
-func run(env *Environment, params *params) error {
-	log := params.Log
-	log.Debugf("gmg version %s %s/%s", gmgVersion, runtime.GOOS, runtime.GOARCH)
-	pkgs, err := loadPackages(log, env, params.Source)
-	if err != nil {
-		errStr := err.Error()
-		if strings.Contains(errStr, "\n") {
-			errStr = "\n" + errStr
-		}
-		return fmt.Errorf("package '%s' load failed: %s", params.Source, errStr)
-	}
-	primaryPkg := pkgs[0]
-	log.Infof("Processing package: %s", primaryPkg.ID)
-	var opts []gogen.Option
-	if primaryPkg.Module != nil {
-		opts = append(opts, gogen.ModulePath(primaryPkg.Module.Path))
-	}
-	g := gogen.NewGenerator(opts...)
-	err = generateAll(g, env, pkgs, params)
-	if err != nil {
-		return err
-	}
-	var fileNames []string
-	for _, f := range g.Files() {
-		fileNames = append(fileNames, f.Path())
-	}
-	log.Debugf("Generating: %s", strings.Join(fileNames, ", "))
-	for _, f := range g.Files() {
-		if f.Skipped() {
+func genFileHeadV2(f *gogen.File, packageName string, interfaces []Interface) {
+	f.L(`// Code generated by github.com/skipor/gmg - type-safe, fast and handy alternative GoMock generator. DO NOT EDIT.`)
+	f.P(`// Source: `)
+	var prevImportPath string
+	for i, iface := range interfaces {
+		if iface.PackageID == prevImportPath {
+			f.P(",", iface.Name)
 			continue
 		}
-		err := f.WriteFile(env.Fs)
-		if err != nil {
-			return fmt.Errorf("file %s: %w", f.Path(), err)
+		prevImportPath = iface.PackageID
+		if i != 0 {
+			f.P(" ;")
 		}
-		_, _ = fmt.Fprintf(env.Stderr, "%s\n", f.Path())
+		f.P(iface.PackageID, ".", iface.Name)
 	}
-	return nil
+	f.L()
+	f.L()
+	f.L("package ", packageName)
+	f.L()
+
+	f.Import("reflect")
+	f.Import("github.com/golang/mock/gomock")
+}
+
+type generateParams struct {
+	InterfaceName string
+	Interface     *types.Interface
+	PackagePath   string
+}
+
+func generate(log *zap.SugaredLogger, f *gogen.File, p generateParams) {
+	mockName := "Mock" + strcase.ToCamel(p.InterfaceName)
+	recorderName := mockName + "MockRecorder"
+	fg := &fileGenerator{
+		File:           f,
+		generateParams: p,
+		log:            log,
+		qualifier: func(pkg *types.Package) string {
+			return f.QualifiedImportPath(gogen.ImportPath(pkg.Path()))
+		},
+		mockName:     mockName,
+		recorderName: recorderName,
+	}
+	fg.generate()
+}
+
+type fileGenerator struct {
+	*gogen.File
+	generateParams
+	mockName     string
+	qualifier    func(pkg *types.Package) string
+	recorderName string
+	log          *zap.SugaredLogger
+}
+
+func (g *fileGenerator) generate() {
+	g.genMock()
+	g.genRecorder()
+}
+
+const (
+	mockReceiver     = "m_"
+	recorderReceiver = "r_"
+	callReceiver     = "c_"
+)
+
+func (g *fileGenerator) genMock() {
+	g.L(`
+	// New`, g.mockName, ` creates a new GoMock for `, g.PackagePath, `.`, g.InterfaceName, `.
+	func New`, g.mockName, `(ctrl *gomock.Controller) *`, g.mockName, ` {
+		return &`, g.mockName, `{ctrl: ctrl}
+	}`)
+
+	g.L(`
+	// `, g.mockName, ` is a GoMock of `, g.PackagePath, `.`, g.InterfaceName, `.
+	type `, g.mockName, ` struct { ctrl *gomock.Controller }`)
+
+	g.L(`
+	// EXPECT returns GoMock recorder.
+	func (`, mockReceiver, ` *`, g.mockName, `) EXPECT() *`, g.recorderName, ` {
+		return (*`, g.recorderName, `)(`, mockReceiver, `)
+	}`)
+	g.L()
+
+	for i, n := 0, g.Interface.NumMethods(); i < n; i++ {
+		g.genMockMethod(g.Interface.Method(i))
+	}
+}
+
+func (g *fileGenerator) genMockMethod(method *types.Func) {
+	scope := g.NewFuncScope()
+	receiver := scope.Declare(mockReceiver)
+	sig := method.Type().(*types.Signature)
+	results := sig.Results()
+	g.L(`// `, method.Name(), ` implements mocked interface.`)
+	g.P(`func (`, receiver, ` *`, g.mockName, `) `, method.Name(), `(`)
+	paramsNames := g.genMockMethodParams(scope, sig)
+	g.P(")")
+
+	resultNames := g.genMockMethodFuncResults(scope, results)
+	g.L(" {")
+
+	res := scope.Declare("res_")
+	g.L(receiver, `.ctrl.T.Helper()`)
+	if results.Len() > 0 {
+		g.P(res, ` := `)
+	}
+	g.P(receiver, `.ctrl.Call(`, receiver, `, "`, method.Name(), `"`)
+	for _, paramName := range paramsNames {
+		g.P(", ", paramName)
+	}
+	g.L(")")
+	for i := 0; i < results.Len(); i++ {
+		result := results.At(i)
+		name := resultNames[i]
+		g.P(name, ` , _ `)
+		if noName(result) {
+			g.P(":")
+		}
+		g.P(`= `, res, `[`, i, `].(`)
+		g.writeType(result.Type())
+		g.L(`)`)
+	}
+
+	g.P("return")
+	for i, resultName := range resultNames {
+		if i != 0 {
+			g.P(",")
+		}
+		g.P(" ", resultName)
+	}
+	g.L()
+	g.L("}")
+	g.L()
+}
+
+func noName(v *types.Var) bool {
+	return emptyOrUnderscore(v.Name())
+}
+
+func emptyOrUnderscore(name string) bool {
+	return name == "" || name == "_"
+}
+
+func (g *fileGenerator) genMockMethodParams(scope *gogen.Scope, sig *types.Signature) []string {
+	params := sig.Params()
+	var paramsNames []string
+	for i, l := 0, params.Len(); i < l; i++ {
+		param := params.At(i)
+		name := paramName(param, scope)
+		paramsNames = append(paramsNames, name)
+		if i != 0 {
+			g.P(", ")
+		}
+		g.P(name, " ")
+
+		typ := param.Type()
+		if sig.Variadic() && i == l-1 {
+			slice, ok := typ.(*types.Slice)
+			if !ok {
+				panic(fmt.Sprintf("last arg in variadic signature is not slice, but: %T", typ))
+			}
+			g.P("...")
+			typ = slice.Elem()
+		}
+		g.writeType(typ)
+	}
+	return paramsNames
+}
+
+func (g *fileGenerator) genMockMethodFuncResults(scope *gogen.Scope, results *types.Tuple) []string {
+	if results.Len() == 0 {
+		return nil
+	}
+	g.P(" ")
+	g.P("(")
+	resultNames := g.genMockMethodResults(scope, results)
+	g.P(")")
+	return resultNames
+}
+
+func (g *fileGenerator) genMockMethodResults(scope *gogen.Scope, results *types.Tuple) []string {
+	var resultNames []string
+	for i := 0; i < results.Len(); i++ {
+		if i != 0 {
+			g.P(", ")
+		}
+		result := results.At(i)
+		name := g.resultName(scope, result, i)
+		if result.Name() != "" {
+			sigName := name
+			if result.Name() == "_" {
+				sigName = "_"
+			}
+			g.P(sigName, " ")
+		}
+		resultNames = append(resultNames, name)
+		g.writeType(result.Type())
+	}
+	return resultNames
+}
+
+func (g *fileGenerator) resultName(scope *gogen.Scope, res *types.Var, i int) string {
+	name := res.Name()
+	switch name {
+	case "", "_":
+		name = fmt.Sprintf("res%v", i) // TODO(skipor): better names
+	}
+	return scope.Declare(name)
+}
+
+func (g *fileGenerator) genRecorder() {
+	g.L(`
+	// `, g.recorderName, ` is the mock recorder for `, g.mockName, `.
+	type `, g.recorderName, ` `, g.mockName, `
+	`)
+
+	for i, n := 0, g.Interface.NumMethods(); i < n; i++ {
+		g.genRecorderMethod(g.Interface.Method(i))
+	}
+
+	g.L(`
+	func (`, recorderReceiver, `*`, g.recorderName, `) mock() *`, g.mockName, ` {
+		return (*`, g.mockName, `)(`, recorderReceiver, `)
+	}`)
+}
+
+func (g *fileGenerator) genRecorderMethod(method *types.Func) {
+	callWrapperName := g.mockName + strcase.ToCamel(method.Name()) + "Call"
+	scope := g.NewFuncScope()
+	receiver := scope.Declare(recorderReceiver)
+	sig := method.Type().(*types.Signature)
+	// Indent with spaces, to make comment go doc code block.
+	g.P(`//   `, method.Name())
+	writeSignature(g.Buffer(), method.Type().(*types.Signature), func(p *types.Package) string {
+		return p.Name()
+	})
+	g.L()
+	g.P(`func (`, receiver, ` *`, g.recorderName, `) `, method.Name(), `(`)
+	paramsNames := g.genRecorderMethodParams(sig.Params(), scope)
+	g.L(`) `, callWrapperName, ` {`)
+	g.L(receiver, `.ctrl.T.Helper()`)
+
+	callVarName := scope.Declare("call")
+	g.P(callVarName, ` := `, receiver, `.ctrl.RecordCallWithMethodType(`, receiver, `.mock(), "`, method.Name(), `", reflect.TypeOf((*`, g.mockName, `)(nil).`, method.Name(), `)`)
+	for _, paramName := range paramsNames {
+		g.P(", ", paramName)
+	}
+	g.L(")")
+
+	g.L("return ", callWrapperName, `{`, callVarName, `}`)
+	g.L(`}`)
+	g.L()
+	g.genGomockCallWrapper(callWrapperName, method.Type().(*types.Signature))
+}
+
+func (g *fileGenerator) genRecorderMethodParams(params *types.Tuple, scope *gogen.Scope) []string {
+	var paramNames []string
+	for i, l := 0, params.Len(); i < l; i++ {
+		param := params.At(i)
+		name := paramName(param, scope)
+		paramNames = append(paramNames, name)
+		if i != 0 {
+			g.P(", ")
+		}
+		g.P(name, " interface{}")
+	}
+	return paramNames
+}
+
+func (g *fileGenerator) genGomockCallWrapper(callWrapperName string, sig *types.Signature) {
+	g.L(`
+	// `, callWrapperName, ` is type safe wrapper of *gomock.Call.
+	type `, callWrapperName, ` struct{ *gomock.Call }
+	`)
+
+	results := sig.Results()
+	{
+		scope := g.NewFuncScope()
+		receiver := scope.Declare(callReceiver)
+		g.P(`
+		// DoAndReturn is type safe wrapper of *gomock.Call DoAndReturn.
+		func (`, receiver, ` `, callWrapperName, `) DoAndReturn(f func(`)
+		g.genMockMethodParams(scope, sig)
+		g.P(`) `)
+		g.genMockMethodFuncResults(scope, results)
+		g.L(`) `, callWrapperName, ` {
+			`, receiver, `.Call.DoAndReturn(f)
+			return `, receiver, `
+		}
+		`)
+		g.L()
+	}
+	{
+		scope := g.NewFuncScope()
+		receiver := scope.Declare(callReceiver)
+		g.P(`
+		// Do is type safe wrapper of *gomock.Call Do.
+		func (`, receiver, ` `, callWrapperName, `) Do(f func(`)
+		g.genMockMethodParams(scope, sig)
+		g.L(`)) `, callWrapperName, ` {
+			`, receiver, `.Call.Do(f)
+		    return `, receiver, `
+		}
+		`)
+		g.L()
+	}
+	if results.Len() > 0 {
+		scope := g.NewFuncScope()
+		receiver := scope.Declare(callReceiver)
+		g.P(`
+		// Return is type safe wrapper of *gomock.Call Return.
+		func (`, receiver, ` `, callWrapperName, `) Return(`)
+		var resultNames []string
+		for i := 0; i < results.Len(); i++ {
+			if i != 0 {
+				g.P(", ")
+			}
+			result := results.At(i)
+			name := g.resultName(scope, result, i)
+			g.P(name, " ")
+			resultNames = append(resultNames, name)
+			g.writeType(result.Type())
+		}
+		g.P(`) `, callWrapperName, ` {
+			`, receiver, `.Call.Return(`)
+		for i, name := range resultNames {
+			if i != 0 {
+				g.P(` ,`)
+			}
+			g.P(name)
+		}
+		g.L(`)
+			return `, receiver, `
+		}
+		`)
+		g.L()
+	}
+}
+
+func (g *fileGenerator) writeType(t types.Type) {
+	types.WriteType(g.Buffer(), t, g.qualifier)
+}
+
+func paramName(param *types.Var, scope *gogen.Scope) string {
+	name := param.Name()
+	if emptyOrUnderscore(name) {
+		// TODO(skipor): well known names: ctx, err
+		// TODO(skipor): deduce better name from type
+		name = "arg"
+	}
+	return scope.Declare(name)
+}
+
+func writeSignature(buf *bytes.Buffer, sig *types.Signature, qf types.Qualifier) {
+	writeTuple(buf, sig.Params(), sig.Variadic(), qf)
+	res := sig.Results()
+	if res.Len() == 0 {
+		return
+	}
+
+	buf.WriteByte(' ')
+	firstRes := res.At(0)
+	if res.Len() == 1 && firstRes.Name() == "" {
+		types.WriteType(buf, firstRes.Type(), qf)
+		return
+	}
+	writeTuple(buf, res, false, qf)
+}
+
+func writeTuple(buf *bytes.Buffer, tup *types.Tuple, variadic bool, qf types.Qualifier) {
+	buf.WriteByte('(')
+	if tup != nil {
+		for i, l := 0, tup.Len(); i < l; i++ {
+			v := tup.At(i)
+			if i > 0 {
+				buf.WriteString(", ")
+			}
+			if v.Name() != "" {
+				buf.WriteString(v.Name())
+				buf.WriteByte(' ')
+			}
+			typ := v.Type()
+			if variadic && i == l-1 {
+				if slice, ok := typ.(*types.Slice); ok {
+					buf.WriteString("...")
+					typ = slice.Elem()
+				}
+			}
+			types.WriteType(buf, typ, qf)
+		}
+	}
+	buf.WriteByte(')')
 }
