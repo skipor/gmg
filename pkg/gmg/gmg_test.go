@@ -232,3 +232,39 @@ func TestGoGenerate_ImplicitName_Fail_FuncDecl(t *testing.T) {
 	})
 	tr.GoGenerate(t).Fail()
 }
+
+func TestGoGenerate_ImplicitPackageName_Deduce(t *testing.T) {
+	tr := newTester(t, M{
+		Name: "pkg",
+		Files: map[string]interface{}{
+			"file.go": /* language=go */ `
+			package pkg
+			//go:generate gmg
+			
+			type Foo interface { Bar() string }
+			`,
+			"mocks/doc.go": /* language=go */ `
+			package custom_mocks_dir_package
+			`,
+		},
+	})
+	tr.GoGenerate(t).Succeed().Golden()
+}
+
+func TestGoGenerate_ImplicitPackageName_NoGoFiles(t *testing.T) {
+	tr := newTester(t, M{
+		Name: "pkg",
+		Files: map[string]interface{}{
+			"file.go": /* language=go */ `
+			package pkg
+			//go:generate gmg
+			
+			type Foo interface { Bar() string }
+			`,
+			"mocks/some.txt": `
+            non go file
+			`,
+		},
+	})
+	tr.GoGenerate(t).Succeed().Golden()
+}

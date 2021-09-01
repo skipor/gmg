@@ -19,12 +19,11 @@ type namedInterface struct {
 	typ  *types.Interface
 }
 
-func findInterfaces(pkgs []*packages.Package, params *params) ([]namedInterface, error) {
-	log := params.Log
-	if len(params.InterfaceNames) != 0 {
-		return findInterfacesByNames(log, pkgs, params.InterfaceNames)
+func findInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string, goGenEnv goGenerateEnv) ([]namedInterface, error) {
+	if len(interfaceNames) != 0 {
+		return findInterfacesByNames(log, pkgs, interfaceNames)
 	}
-	return findInterfaceCorrespondingToGoGenerateComment(pkgs, params)
+	return findInterfaceCorrespondingToGoGenerateComment(log, pkgs, goGenEnv)
 }
 
 func findInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string) ([]namedInterface, error) {
@@ -60,9 +59,7 @@ func findInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, int
 	return ifaces, nil
 }
 
-func findInterfaceCorrespondingToGoGenerateComment(pkgs []*packages.Package, params *params) ([]namedInterface, error) {
-	log := params.Log
-	goGenEnv := params.GoGenerateEnv
+func findInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkgs []*packages.Package, goGenEnv goGenerateEnv) ([]namedInterface, error) {
 	pkg := getPackageByKind(pkgs, goGenEnv.packageKind())
 	if pkg == nil {
 		return nil, fmt.Errorf(

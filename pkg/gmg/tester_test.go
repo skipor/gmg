@@ -3,6 +3,7 @@ package gmg
 import (
 	"go/format"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -33,6 +34,9 @@ func newTester(t *testing.T, modules ...M) *Tester {
 
 func formatModuleFiles(t *testing.T, m M) {
 	for path, data := range m.Files {
+		if filepath.Ext(path) != ".go" {
+			continue
+		}
 		str, ok := data.(string)
 		if !ok {
 			continue
@@ -110,8 +114,8 @@ func (tr *Tester) GoGenerate(t *testing.T) *RunResult {
 		}
 	}
 	changed := afero.NewMemMapFs().(*afero.MemMapFs)
-	for path, before := range afterFsMap {
-		after, ok := beforeFsMap[path]
+	for path, after := range afterFsMap {
+		before, ok := beforeFsMap[path]
 		if !ok || before != after {
 			err := afero.WriteFile(changed, path, []byte(after), 0644)
 			require.NoError(t, err)
@@ -189,7 +193,6 @@ func exportedInfo(t *testing.T, e *packagestest.Exported) {
 	t.Helper()
 	t.Logf("Work dir: %s", e.Config.Dir)
 	t.Logf("Temp dir: %s", e.Temp())
-	t.Logf("File located at: %s", e.File("pkg", "file.go"))
 	t.Logf("Tree of temp dir:\n%s", dirTree(t, e.Temp()))
 }
 

@@ -147,9 +147,10 @@ func loadParams(env *Environment) (*params, error) {
 			"	./mocks/{}_gomock.go\n"+
 			"	./mocks_test.go # All mocks will be put to single file.\n",
 	)
-	fs.StringVarP(&pkg, "pkg", "p", "mocks_{}",
+	fs.StringVarP(&pkg, "pkg", "p", "",
 		"Package name in generated files.\n"+
 			"'{}' will be replaced with source package name.\n"+
+			"By default, --dst package name used, or 'mocks_{}' if --dst package is not exist.\n"+
 			"Examples:\n"+
 			"	mocks_{} # mockgen style\n"+
 			"	{}mocks # mockery style\n")
@@ -245,7 +246,7 @@ func run(env *Environment, params *params) error {
 		opts = append(opts, gogen.ModulePath(primaryPkg.Module.Path))
 	}
 	g := gogen.NewGenerator(opts...)
-	err = generateAll(g, pkgs, params)
+	err = generateAll(g, env, pkgs, params)
 	if err != nil {
 		return err
 	}

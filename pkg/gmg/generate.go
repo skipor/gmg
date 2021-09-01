@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"go/types"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -15,7 +16,7 @@ import (
 	"github.com/skipor/gmg/pkg/gogen"
 )
 
-func generateAll(g *gogen.Generator, pkgs []*packages.Package, params *params) error {
+func generateAll(g *gogen.Generator, env *Environment, pkgs []*packages.Package, params *params) error {
 	log := params.Log
 	srcPrimaryPkg := pkgs[0]
 	dstDir := strings.TrimPrefix(params.Destination, ".")
@@ -24,7 +25,12 @@ func generateAll(g *gogen.Generator, pkgs []*packages.Package, params *params) e
 		dstDir, fileNamePattern = path.Split(dstDir)
 	}
 	dstDir = strings.ReplaceAll(dstDir, placeHolder, srcPrimaryPkg.Name)
-	packageName := strings.ReplaceAll(params.Package, placeHolder, srcPrimaryPkg.Name)
+
+	packageName, err := getPackageName(log, params.Package, dstDir, srcPrimaryPkg, env)
+	if err != nil {
+		return fmt.Errorf("get generated file package name: %w", err)
+	}
+
 	importPath := gogen.ImportPath(path.Join(srcPrimaryPkg.PkgPath, dstDir))
 
 	isSingleFile := !strings.Contains(fileNamePattern, placeHolder)
@@ -34,7 +40,7 @@ func generateAll(g *gogen.Generator, pkgs []*packages.Package, params *params) e
 		genFileHead(singleFile, packageName, srcPrimaryPkg.PkgPath, params.InterfaceNames)
 	}
 
-	ifaces, err := findInterfaces(pkgs, params)
+	ifaces, err := findInterfaces(log, pkgs, params.InterfaceNames, params.GoGenerateEnv)
 	if err != nil {
 		return err
 	}
@@ -55,6 +61,51 @@ func generateAll(g *gogen.Generator, pkgs []*packages.Package, params *params) e
 
 	}
 	return nil
+}
+
+func getPackageName(log *zap.SugaredLogger, packageNameTemplate string, dstDir string, srcPrimaryPkg *packages.Package, env *Environment) (string, error) {
+	const defaultPackageNameTemplate = "mocks_{}"
+	if packageNameTemplate != "" {
+		log.Debugf("Package name template explisitly set - using it")
+		return executePackageNameTemplate(packageNameTemplate, srcPrimaryPkg), nil
+	}
+	if _, err := os.Stat(dstDir); os.IsNotExist(err) {
+		log.Debugf("Package name is not set, but destination dir is not exist - using default")
+		return executePackageNameTemplate(defaultPackageNameTemplate, srcPrimaryPkg), nil
+	}
+
+	absDstDir, err := filepath.Abs(dstDir)
+	if err != nil {
+		return "", fmt.Errorf("destination dir '%s' abs: %w", dstDir, err)
+	}
+
+	// TODO(skipor): optimise - check, maybe it already loaded in pkgs
+
+	log.Debugf("Package name is not set, and destination dir exists - trying to load go package, to get its name, to use it in generated files")
+	dstDirPkgs, err := packages.Load(&packages.Config{
+		Mode:       packages.NeedName,
+		Dir:        env.Dir,
+		Env:        env.Env,
+		BuildFlags: nil, // TODO(skipor)
+	}, absDstDir)
+
+	if err != nil {
+		return "", fmt.Errorf("failed to load destination dir '%s' go package to deduce package name: %w\n."+
+			"\tSet package name explicitly via --pkg flag.", dstDir, err)
+	}
+	debugLogPkgs(log, dstDirPkgs)
+	dstPackageName := dstDirPkgs[0].Name
+	if dstPackageName == "" {
+		log.Debugf("Destination dir package has no package name - seems there are no go files. Falling back to default package name template")
+		return executePackageNameTemplate(defaultPackageNameTemplate, srcPrimaryPkg), nil
+	}
+
+	log.Debugf("Going to use destination dir package package name '%s'", dstPackageName)
+	return dstPackageName, nil
+}
+
+func executePackageNameTemplate(tmpl string, srcPrimaryPkg *packages.Package) string {
+	return strings.ReplaceAll(tmpl, placeHolder, srcPrimaryPkg.Name)
 }
 
 func genFileHead(f *gogen.File, packageName string, src string, interfaceNames []string) {
