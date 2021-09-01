@@ -1,4 +1,4 @@
-package gmg
+package test
 
 import (
 	"testing"

@@ -1,4 +1,4 @@
-package gmg
+package test
 
 import (
 	"go/format"
@@ -14,6 +14,7 @@ import (
 	"golang.org/x/tools/go/packages/packagestest"
 
 	"github.com/skipor/gmg/internal/testutil"
+	"github.com/skipor/gmg/pkg/gmg"
 )
 
 var x = packagestest.Modules
@@ -56,14 +57,14 @@ func (tr *Tester) Gmg(t *testing.T, args ...string) *RunResult {
 	args = append(args, "--debug")
 	t.Logf("Run: gmg %s", strings.Join(args, " "))
 	FS := &afero.MemMapFs{}
-	env := &Environment{
+	env := &gmg.Environment{
 		Args:   args,
 		Stderr: testWriter{t},
 		Dir:    tr.exported.Config.Dir,
 		Env:    tr.exported.Config.Env,
 		Fs:     FS,
 	}
-	exitCode := Main(env)
+	exitCode := gmg.Main(env)
 
 	res := &RunResult{
 		t:        t,
