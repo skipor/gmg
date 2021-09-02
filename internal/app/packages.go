@@ -1,4 +1,4 @@
-package gmg
+package app
 
 import (
 	"strings"

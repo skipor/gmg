@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/go/packages/packagestest"
 
+	"github.com/skipor/gmg/internal/app"
 	"github.com/skipor/gmg/internal/testutil"
-	"github.com/skipor/gmg/pkg/gmg"
 )
 
 var x = packagestest.Modules
@@ -57,14 +57,14 @@ func (tr *Tester) Gmg(t *testing.T, args ...string) *RunResult {
 	args = append(args, "--debug")
 	t.Logf("Run: gmg %s", strings.Join(args, " "))
 	FS := &afero.MemMapFs{}
-	env := &gmg.Environment{
+	env := &app.Environment{
 		Args:   args,
 		Stderr: testWriter{t},
 		Dir:    tr.exported.Config.Dir,
 		Env:    tr.exported.Config.Env,
 		Fs:     FS,
 	}
-	exitCode := gmg.Main(env)
+	exitCode := app.Main(env)
 
 	res := &RunResult{
 		t:        t,

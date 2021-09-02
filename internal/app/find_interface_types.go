@@ -1,4 +1,4 @@
-package gmg
+package app
 
 import (
 	"fmt"
@@ -12,18 +12,20 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/tools/go/packages"
+
+	"github.com/skipor/gmg/pkg/gmg"
 )
 
-func findInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string, goGenEnv goGenerateEnv) ([]Interface, error) {
+func findInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string, goGenEnv goGenerateEnv) ([]gmg.Interface, error) {
 	if len(interfaceNames) != 0 {
 		return findInterfacesByNames(log, pkgs, interfaceNames)
 	}
 	return findInterfaceCorrespondingToGoGenerateComment(log, pkgs, goGenEnv)
 }
 
-func findInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string) ([]Interface, error) {
+func findInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string) ([]gmg.Interface, error) {
 	srcPrimaryPkg := pkgs[0]
-	var ifaces []Interface
+	var ifaces []gmg.Interface
 	for _, interfaceName := range interfaceNames {
 		var obj types.Object
 		var objPkg *packages.Package
@@ -48,7 +50,7 @@ func findInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, int
 			return nil, fmt.Errorf("can mock only interfaces, but '%s' is %s", interfaceName, objType.String())
 		}
 
-		ifaces = append(ifaces, Interface{
+		ifaces = append(ifaces, gmg.Interface{
 			Name:       interfaceName,
 			ImportPath: objPkg.PkgPath,
 			Type:       iface,
@@ -57,7 +59,7 @@ func findInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, int
 	return ifaces, nil
 }
 
-func findInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkgs []*packages.Package, goGenEnv goGenerateEnv) ([]Interface, error) {
+func findInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkgs []*packages.Package, goGenEnv goGenerateEnv) ([]gmg.Interface, error) {
 	pkg := getPackageByKind(pkgs, goGenEnv.packageKind())
 	if pkg == nil {
 		return nil, fmt.Errorf(
@@ -106,7 +108,7 @@ func findInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkgs 
 		)
 	}
 
-	return []Interface{{
+	return []gmg.Interface{{
 		Name:       typeName,
 		ImportPath: pkg.PkgPath,
 		Type:       typ.Underlying().(*types.Interface),

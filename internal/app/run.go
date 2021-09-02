@@ -1,4 +1,4 @@
-package gmg
+package app
 
 import (
 	"fmt"
@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/tools/go/packages"
 
+	"github.com/skipor/gmg/pkg/gmg"
 	"github.com/skipor/gmg/pkg/gogen"
 )
 
@@ -88,7 +89,7 @@ func generateAll(env *Environment, pkgs []*packages.Package, params *params) ([]
 	}
 	importPath := path.Join(srcPrimaryPkg.PkgPath, dstDir)
 
-	gmg := NewGMG(log)
+	g := gmg.NewGMG(log)
 
 	ifaces, err := findInterfaces(log, pkgs, params.InterfaceNames, params.GoGenerateEnv)
 	if err != nil {
@@ -97,7 +98,7 @@ func generateAll(env *Environment, pkgs []*packages.Package, params *params) ([]
 
 	isSingleFile := !strings.Contains(fileNamePattern, placeHolder)
 	if isSingleFile {
-		gmg.GenerateFile(GenerateFileParams{
+		g.GenerateFile(gmg.GenerateFileParams{
 			FilePath:    fileNamePattern,
 			ImportPath:  importPath,
 			PackageName: packageName,
@@ -107,15 +108,15 @@ func generateAll(env *Environment, pkgs []*packages.Package, params *params) ([]
 		for _, iface := range ifaces {
 			baseName := strings.ReplaceAll(fileNamePattern, placeHolder, strcase.ToSnake(iface.Name))
 			filePath := filepath.Join(dstDir, baseName)
-			gmg.GenerateFile(GenerateFileParams{
+			g.GenerateFile(gmg.GenerateFileParams{
 				FilePath:    filePath,
 				ImportPath:  importPath,
 				PackageName: packageName,
-				Interfaces:  []Interface{iface},
+				Interfaces:  []gmg.Interface{iface},
 			})
 		}
 	}
-	return gmg.gen.Files(), nil
+	return g.Files(), nil
 }
 
 func getPackageName(log *zap.SugaredLogger, packageNameTemplate string, dstDir string, srcPrimaryPkg *packages.Package, env *Environment) (string, error) {

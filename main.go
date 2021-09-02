@@ -3,11 +3,11 @@ package main
 import (
 	"os"
 
-	"github.com/skipor/gmg/pkg/gmg"
+	"github.com/skipor/gmg/internal/app"
 )
 
 func main() {
-	env := gmg.RealEnvironment()
-	exitCode := gmg.Main(env)
+	env := app.RealEnvironment()
+	exitCode := app.Main(env)
 	os.Exit(exitCode)
 }
