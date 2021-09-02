@@ -1,4 +1,4 @@
-package gmg
+package app
 
 import (
 	"fmt"
@@ -12,28 +12,27 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/tools/go/packages"
+
+	"github.com/skipor/gmg/pkg/gmg"
 )
 
-type namedInterface struct {
-	name string
-	typ  *types.Interface
-}
-
-func findInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string, goGenEnv goGenerateEnv) ([]namedInterface, error) {
+func findInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string, goGenEnv goGenerateEnv) ([]gmg.Interface, error) {
 	if len(interfaceNames) != 0 {
 		return findInterfacesByNames(log, pkgs, interfaceNames)
 	}
 	return findInterfaceCorrespondingToGoGenerateComment(log, pkgs, goGenEnv)
 }
 
-func findInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string) ([]namedInterface, error) {
+func findInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string) ([]gmg.Interface, error) {
 	srcPrimaryPkg := pkgs[0]
-	var ifaces []namedInterface
+	var ifaces []gmg.Interface
 	for _, interfaceName := range interfaceNames {
 		var obj types.Object
+		var objPkg *packages.Package
 		for _, pkg := range pkgs {
 			obj = pkg.Types.Scope().Lookup(interfaceName)
 			if obj != nil {
+				objPkg = pkg
 				break
 			}
 		}
@@ -51,15 +50,16 @@ func findInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, int
 			return nil, fmt.Errorf("can mock only interfaces, but '%s' is %s", interfaceName, objType.String())
 		}
 
-		ifaces = append(ifaces, namedInterface{
-			name: interfaceName,
-			typ:  iface,
+		ifaces = append(ifaces, gmg.Interface{
+			Name:       interfaceName,
+			ImportPath: objPkg.PkgPath,
+			Type:       iface,
 		})
 	}
 	return ifaces, nil
 }
 
-func findInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkgs []*packages.Package, goGenEnv goGenerateEnv) ([]namedInterface, error) {
+func findInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkgs []*packages.Package, goGenEnv goGenerateEnv) ([]gmg.Interface, error) {
 	pkg := getPackageByKind(pkgs, goGenEnv.packageKind())
 	if pkg == nil {
 		return nil, fmt.Errorf(
@@ -101,15 +101,17 @@ func findInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkgs 
 	}
 	typ := obj.Type()
 	if !types.IsInterface(typ) {
-		return nil, fmt.Errorf("`//go:generate` comment corresponding to type declaration at %s, which is not interface but: %s",
-			pos(fset, typeSpec),
+		return nil, fmt.Errorf("`//go:generate` comment corresponding to type declaration at %s %s, which is not interface but: %s %s",
 			typ.String(),
+			pos(fset, typeSpec),
+			typ.Underlying().String(),
 		)
 	}
 
-	return []namedInterface{{
-		name: typeName,
-		typ:  typ.Underlying().(*types.Interface),
+	return []gmg.Interface{{
+		Name:       typeName,
+		ImportPath: pkg.PkgPath,
+		Type:       typ.Underlying().(*types.Interface),
 	}}, nil
 }
 
@@ -143,7 +145,8 @@ func correspondingTypeSpec(fset *token.FileSet, file *ast.File, goline int, pars
 	case *ast.FuncDecl:
 		return nil, fmt.Errorf("`//go:generate` comment corresponding to declaration at %s which is not `type`, but `func`.\n"+
 			"Put it just above interface type declaration or pass interface name(s) as argument(s).",
-			pos(fset, decl))
+			pos(fset, decl),
+		)
 	case *ast.BadDecl:
 		return nil, fmt.Errorf("failed to parse declaration next to `//go:generate` at %s.\n"+
 			"Parse errors: %w",

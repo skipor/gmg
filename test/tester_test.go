@@ -1,4 +1,4 @@
-package gmg
+package test
 
 import (
 	"go/format"
@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/go/packages/packagestest"
 
+	"github.com/skipor/gmg/internal/app"
 	"github.com/skipor/gmg/internal/testutil"
 )
 
@@ -56,14 +57,14 @@ func (tr *Tester) Gmg(t *testing.T, args ...string) *RunResult {
 	args = append(args, "--debug")
 	t.Logf("Run: gmg %s", strings.Join(args, " "))
 	FS := &afero.MemMapFs{}
-	env := &Environment{
+	env := &app.Environment{
 		Args:   args,
 		Stderr: testWriter{t},
 		Dir:    tr.exported.Config.Dir,
 		Env:    tr.exported.Config.Env,
 		Fs:     FS,
 	}
-	exitCode := Main(env)
+	exitCode := app.Main(env)
 
 	res := &RunResult{
 		t:        t,
