@@ -49,9 +49,9 @@ func findInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, int
 		}
 
 		ifaces = append(ifaces, Interface{
-			Name:      interfaceName,
-			PackageID: objPkg.ID,
-			Type:      iface,
+			Name:       interfaceName,
+			ImportPath: objPkg.PkgPath,
+			Type:       iface,
 		})
 	}
 	return ifaces, nil
@@ -99,16 +99,17 @@ func findInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkgs 
 	}
 	typ := obj.Type()
 	if !types.IsInterface(typ) {
-		return nil, fmt.Errorf("`//go:generate` comment corresponding to type declaration at %s, which is not interface but: %s",
-			pos(fset, typeSpec),
+		return nil, fmt.Errorf("`//go:generate` comment corresponding to type declaration at %s %s, which is not interface but: %s %s",
 			typ.String(),
+			pos(fset, typeSpec),
+			typ.Underlying().String(),
 		)
 	}
 
 	return []Interface{{
-		Name:      typeName,
-		PackageID: pkg.ID,
-		Type:      typ.Underlying().(*types.Interface),
+		Name:       typeName,
+		ImportPath: pkg.PkgPath,
+		Type:       typ.Underlying().(*types.Interface),
 	}}, nil
 }
 
@@ -142,7 +143,8 @@ func correspondingTypeSpec(fset *token.FileSet, file *ast.File, goline int, pars
 	case *ast.FuncDecl:
 		return nil, fmt.Errorf("`//go:generate` comment corresponding to declaration at %s which is not `type`, but `func`.\n"+
 			"Put it just above interface type declaration or pass interface name(s) as argument(s).",
-			pos(fset, decl))
+			pos(fset, decl),
+		)
 	case *ast.BadDecl:
 		return nil, fmt.Errorf("failed to parse declaration next to `//go:generate` at %s.\n"+
 			"Parse errors: %w",

@@ -24,9 +24,10 @@ type GMG struct {
 }
 
 type Interface struct {
-	Name      string
-	PackageID string
-	Type      *types.Interface
+	Name string
+	Type *types.Interface
+	// ImportPath is to add interface source to generated godoc.
+	ImportPath string
 }
 
 type GenerateFileParams struct {
@@ -48,7 +49,7 @@ func (g *GMG) GenerateFile(p GenerateFileParams) {
 		generate(g.log, file, generateParams{
 			InterfaceName: iface.Name,
 			Interface:     iface.Type,
-			PackagePath:   iface.PackageID,
+			PackagePath:   iface.ImportPath,
 		})
 	}
 }
@@ -58,15 +59,15 @@ func genFileHeadV2(f *gogen.File, packageName string, interfaces []Interface) {
 	f.P(`// Source: `)
 	var prevImportPath string
 	for i, iface := range interfaces {
-		if iface.PackageID == prevImportPath {
+		if iface.ImportPath == prevImportPath {
 			f.P(",", iface.Name)
 			continue
 		}
-		prevImportPath = iface.PackageID
+		prevImportPath = iface.ImportPath
 		if i != 0 {
 			f.P(" ;")
 		}
-		f.P(iface.PackageID, ".", iface.Name)
+		f.P(iface.ImportPath, ".", iface.Name)
 	}
 	f.L()
 	f.L()
