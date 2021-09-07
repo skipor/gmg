@@ -102,6 +102,8 @@ func loadParams(env *Environment) (*params, error) {
 		dst     string
 		debug   bool
 		version bool
+		all     bool
+		allFile bool
 	)
 	fs.StringVarP(&src, "src", "s", ".",
 		"Source Go package to search for interfaces. Absolute or relative.\n"+
@@ -130,6 +132,13 @@ func loadParams(env *Environment) (*params, error) {
 			"Examples:\n"+
 			"	mocks_{} # mockgen style\n"+
 			"	{}mocks # mockery style\n")
+	fs.BoolVar(&all, "all", false,
+		"Select all interfaces in package.\n"+
+			"When called from //go:generate comment then package kind selected automatically: primary - other than *_test.go files; test - *_test.go files; black-box-test - package *_test\n",
+	)
+	fs.BoolVar(&allFile, "all-file", false,
+		"Select all interfaces in current file, when called from //go:generate comment .\n",
+	)
 	fs.BoolVar(&debug, "debug", os.Getenv("GMG_DEBUG") != "", "Verbose debug logging.")
 	fs.BoolVar(&version, "version", false, "Show version and exit.")
 	err := fs.Parse(env.Args)
@@ -184,12 +193,16 @@ func loadParams(env *Environment) (*params, error) {
 	}
 
 	return &params{
-		Log:            log.Sugar(),
-		Source:         src,
-		Destination:    path.Clean(dst),
-		Package:        pkg,
-		InterfaceNames: interfaces,
-		GoGenerateEnv:  goGenerateEnv,
+		Log:         log.Sugar(),
+		Source:      src,
+		Destination: path.Clean(dst),
+		Package:     pkg,
+		Selector: interfaceSelector{
+			names:      interfaces,
+			goGenEnv:   goGenerateEnv,
+			allPackage: all,
+			allFile:    allFile,
+		},
 	}, nil
 
 }
