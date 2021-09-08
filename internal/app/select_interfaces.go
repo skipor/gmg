@@ -193,12 +193,15 @@ func selectAllPackageInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package
 	}
 	ifaces := selectAllPkgInterfaces(log, pkg)
 	if len(ifaces) == 0 {
-		return nil, fmt.Errorf("no interfaces found in package %s", pkg.ID)
+		return nil, fmt.Errorf("no interfaces found in package '%s'", pkg.ID)
 	}
 	if pkgKind == testPackageKind {
 		ifaces = subtractPrimaryPackageInterfaces(log, pkgs, ifaces)
 		if len(ifaces) == 0 {
-			return nil, fmt.Errorf("no 'test only' interfaces found; that is, no interfaces found in *_test.go files without package *_test")
+			return nil, fmt.Errorf("no 'test only' interfaces found in package '%s'.\n"+
+				"That is, no interfaces found in *_test.go files without package *_test.\n"+
+				"Put //go:generate in non *_test.go file to generate mocks for all non-test interfaces.",
+				pkg.PkgPath)
 		}
 	}
 	return ifaces, nil
