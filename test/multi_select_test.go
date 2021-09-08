@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestGoGenerate_All_Primary(t *testing.T) {
+func TestMultiSelect_GoGenerate_All_Primary(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "repo/pkg",
 		Files: map[string]interface{}{
@@ -30,7 +30,7 @@ func TestGoGenerate_All_Primary(t *testing.T) {
 		Golden()
 }
 
-func TestGoGenerate_All_Test(t *testing.T) {
+func TestMultiSelect_GoGenerate_All_Test(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "repo/pkg",
 		Files: map[string]interface{}{
@@ -59,7 +59,7 @@ func TestGoGenerate_All_Test(t *testing.T) {
 		Golden()
 }
 
-func TestGoGenerate_All_BlackBoxTest(t *testing.T) {
+func TestMultiSelect_GoGenerate_All_BlackBoxTest(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "repo/pkg",
 		Files: map[string]interface{}{
@@ -83,7 +83,36 @@ func TestGoGenerate_All_BlackBoxTest(t *testing.T) {
 	})
 	tr.GoGenerate(t).
 		Succeed().
-		// TODO(skipor): change default dst: test_1_test.go, test_2_test.go
+		// TODO(skipor): change default dst: black_box_1_test.go, black_box_2_test.go
 		Files("mocks/black_box_1.go", "mocks/black_box_2.go").
 		Golden()
+}
+
+func TestMultiSelect_GoGenerate_All_BlackBoxTest_DotImport(t *testing.T) {
+	tr := newTester(t, M{
+		Name: "repo/pkg",
+		Files: map[string]interface{}{
+			"primary.go": /* language=go */ `
+			package pkg
+			type Primary1 interface { P1()  }
+			type Primary2 interface { P2()  }
+			`,
+			"primary_test.go": /* language=go */ `
+			package pkg
+			type Test1 interface { T1()  }
+			type Test2 interface { T2()  }
+			`,
+			"black_box_test.go": /* language=go */ `
+			//go:generate gmg --all
+			package pkg_test
+            import . "repo/pkg"
+			type BlackBox1 interface { BB1()  }
+			type BlackBox2 interface { BB2()  }
+			`,
+		},
+	})
+	tr.GoGenerate(t).
+		Succeed().
+		// TODO(skipor): change default dst: black_box_1_test.go, black_box_2_test.go
+		Files("mocks/black_box_1.go", "mocks/black_box_2.go")
 }

@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestTrivial(t *testing.T) {
+func TestConsoleNamesSelect_ConsoleNamesSelect_Trivial(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -18,7 +18,7 @@ func TestTrivial(t *testing.T) {
 		Gmg(t, "Foo").Succeed().
 		Golden()
 }
-func TestTrivial_TestOnly(t *testing.T) {
+func TestConsoleNamesSelect_ConsoleNamesSelect_Trivial_TestOnly(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -33,7 +33,7 @@ func TestTrivial_TestOnly(t *testing.T) {
 		Golden()
 }
 
-func TestTrivial_BlackBoxTestOnly(t *testing.T) {
+func TestConsoleNamesSelect_ConsoleNamesSelect_Trivial_BlackBoxTestOnly(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -51,7 +51,7 @@ func TestTrivial_BlackBoxTestOnly(t *testing.T) {
 		Golden()
 }
 
-func TestSignatureCornerCases(t *testing.T) {
+func TestConsoleNamesSelect_ConsoleNamesSelect_SignatureCornerCases(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -83,7 +83,7 @@ func TestSignatureCornerCases(t *testing.T) {
 		Golden()
 }
 
-func TestIoWriter(t *testing.T) {
+func TestConsoleNamesSelect_ConsoleNamesSelect_IoWriter(t *testing.T) {
 	newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -96,7 +96,7 @@ func TestIoWriter(t *testing.T) {
 		Golden()
 }
 
-func Test_RelativeSrc(t *testing.T) {
+func TestConsoleNamesSelect_ConsoleNamesSelect__RelativeSrc(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -109,7 +109,7 @@ func Test_RelativeSrc(t *testing.T) {
 	tr.Gmg(t, "--src", "./sub", "Foo").Files("mocks/foo.go").Succeed()
 }
 
-func TestPackageNotFound(t *testing.T) {
+func TestConsoleNamesSelect_ConsoleNamesSelect_PackageNotFound(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -122,7 +122,7 @@ func TestPackageNotFound(t *testing.T) {
 	tr.Gmg(t, "--src", "./not_found", "Foo").Fail()
 }
 
-func TestPackageNameConflictSucceed(t *testing.T) {
+func TestConsoleNamesSelect_ConsoleNamesSelect_PackageNameConflictSucceed(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -138,7 +138,7 @@ func TestPackageNameConflictSucceed(t *testing.T) {
 	tr.Gmg(t, "Foo").Files("mocks/foo.go").Succeed()
 }
 
-func TestPackageNameConflictFail(t *testing.T) {
+func TestConsoleNamesSelect_ConsoleNamesSelect_PackageNameConflictFail(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -154,7 +154,7 @@ func TestPackageNameConflictFail(t *testing.T) {
 	tr.Gmg(t, "Foo").Fail()
 }
 
-func TestConsoleNamesSelect_NoArgs(t *testing.T) {
+func TestConsoleNamesSelect_ConsoleNamesSelect__NoArgs(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{

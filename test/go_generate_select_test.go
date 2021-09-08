@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestGoGenerate_ExplicitName(t *testing.T) {
+func TestGoGenerateSelect_ExplicitName(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -19,7 +19,7 @@ func TestGoGenerate_ExplicitName(t *testing.T) {
 	tr.GoGenerate(t).Succeed().Files("mocks/foo.go")
 }
 
-func TestGoGenerate_ImplicitName(t *testing.T) {
+func TestGoGenerateSelect_ImplicitName(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -33,7 +33,7 @@ func TestGoGenerate_ImplicitName(t *testing.T) {
 	tr.GoGenerate(t).Succeed().Files("mocks/foo.go")
 }
 
-func TestGoGenerate_ImplicitName_BeforeTypeDecl(t *testing.T) {
+func TestGoGenerateSelect_ImplicitName_BeforeTypeDecl(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -49,7 +49,7 @@ func TestGoGenerate_ImplicitName_BeforeTypeDecl(t *testing.T) {
 	tr.GoGenerate(t).Succeed().Files("mocks/foo.go")
 }
 
-func TestGoGenerate_ImplicitName_Fail_AtEndOfTypeDecl(t *testing.T) {
+func TestGoGenerateSelect_ImplicitName_Fail_AtEndOfTypeDecl(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -65,7 +65,7 @@ func TestGoGenerate_ImplicitName_Fail_AtEndOfTypeDecl(t *testing.T) {
 	tr.GoGenerate(t).Fail()
 }
 
-func TestGoGenerate_ImplicitName_Fail_FuncDecl(t *testing.T) {
+func TestGoGenerateSelect_ImplicitName_Fail_FuncDecl(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -80,7 +80,7 @@ func TestGoGenerate_ImplicitName_Fail_FuncDecl(t *testing.T) {
 	tr.GoGenerate(t).Fail()
 }
 
-func TestGoGenerate_ImplicitName_Fail_StructDecl(t *testing.T) {
+func TestGoGenerateSelect_ImplicitName_Fail_StructDecl(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -95,7 +95,7 @@ func TestGoGenerate_ImplicitName_Fail_StructDecl(t *testing.T) {
 	tr.GoGenerate(t).Fail()
 }
 
-func TestGoGenerate_ImplicitName_Fail_IntDecl(t *testing.T) {
+func TestGoGenerateSelect_ImplicitName_Fail_IntDecl(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -110,7 +110,7 @@ func TestGoGenerate_ImplicitName_Fail_IntDecl(t *testing.T) {
 	tr.GoGenerate(t).Fail()
 }
 
-func TestGoGenerate_ImplicitName_Fail_NoDecl(t *testing.T) {
+func TestGoGenerateSelect_ImplicitName_Fail_NoDecl(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -124,7 +124,7 @@ func TestGoGenerate_ImplicitName_Fail_NoDecl(t *testing.T) {
 	tr.GoGenerate(t).Fail()
 }
 
-func TestGoGenerate_ImplicitPackageName_Deduce(t *testing.T) {
+func TestGoGenerateSelect_ImplicitPackageName_Deduce(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
@@ -142,7 +142,7 @@ func TestGoGenerate_ImplicitPackageName_Deduce(t *testing.T) {
 	tr.GoGenerate(t).Succeed().Golden()
 }
 
-func TestGoGenerate_ImplicitPackageName_NoGoFiles(t *testing.T) {
+func TestGoGenerateSelect_ImplicitPackageName_NoGoFiles(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
 		Files: map[string]interface{}{
