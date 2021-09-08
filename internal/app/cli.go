@@ -186,10 +186,10 @@ func loadParams(env *Environment) (*params, error) {
 		GOPACKAGE: env.Getenv("GOPACKAGE"),
 	}
 	log.Sugar().Debugf("Go env: %+v", goGenerateEnv)
-	if !goGenerateEnv.isSet() && len(interfaces) == 0 {
-		return nil, fmt.Errorf("pass interface names as arguments.\n" +
+	if !goGenerateEnv.isSet() && len(interfaces) == 0 && !all && !allFile {
+		return nil, fmt.Errorf("pass interface names as arguments or use interface names selector like '--all'.\n" +
 			"Or put `//go:generate gmg` comment before interface declaration and run `go generate`.\n" +
-			"Or run `gmg --help` to get more information.")
+			"Run `gmg --help` to get more information.")
 	}
 
 	if all && allFile {
