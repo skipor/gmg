@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -19,6 +20,12 @@ import (
 const gmgVersion = "v0.6.0"
 
 func Main(env *Environment) int {
+	isGoGenerate := env.Getenv("GOFILE") != ""
+	if isGoGenerate {
+		// Separate different 'go generate' run logs
+		fmt.Fprintf(env.Stderr, "\n")
+		defer fmt.Fprintf(env.Stderr, "\n")
+	}
 	params, err := loadParams(env)
 	if errors.Is(err, errExitZero) {
 		return 0
@@ -167,7 +174,9 @@ func loadParams(env *Environment) (*params, error) {
 		zapcore.NewConsoleEncoder(encConf),
 		zapcore.AddSync(env.Stderr),
 		level,
-	))
+	)).Sugar()
+	log.Debugf("gmg version %s %s/%s", gmgVersion, runtime.GOOS, runtime.GOARCH)
+	log.Debugf("Run as: %q", os.Args)
 
 	interfaces := fs.Args()
 
@@ -185,7 +194,7 @@ func loadParams(env *Environment) (*params, error) {
 		GOFILE:    env.Getenv("GOFILE"),
 		GOPACKAGE: env.Getenv("GOPACKAGE"),
 	}
-	log.Sugar().Debugf("Go env: %+v", goGenerateEnv)
+	log.Debugf("Go env: %+v", goGenerateEnv)
 	if !goGenerateEnv.isSet() && len(interfaces) == 0 && !all && !allFile {
 		return nil, fmt.Errorf("pass interface names as arguments or use interface names selector like '--all'.\n" +
 			"Or put `//go:generate gmg` comment before interface declaration and run `go generate`.\n" +
@@ -200,7 +209,7 @@ func loadParams(env *Environment) (*params, error) {
 	}
 
 	return &params{
-		Log:         log.Sugar(),
+		Log:         log,
 		Source:      src,
 		Destination: path.Clean(dst),
 		Package:     pkg,

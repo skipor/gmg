@@ -5,7 +5,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/iancoleman/strcase"
@@ -39,7 +38,6 @@ type goGenerateEnv struct {
 
 func run(env *Environment, params *params) error {
 	log := params.Log
-	log.Debugf("gmg version %s %s/%s", gmgVersion, runtime.GOOS, runtime.GOARCH)
 	pkgs, err := loadPackages(log, env, params.Source)
 	if err != nil {
 		errStr := err.Error()
