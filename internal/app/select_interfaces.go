@@ -23,24 +23,29 @@ type interfaceSelector struct {
 	goGenEnv   goGenerateEnv
 }
 
-func findInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, sel interfaceSelector) ([]gmg.Interface, error) {
+func selectInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, sel interfaceSelector) ([]gmg.Interface, error) {
+	log.Debugf("Selecting interfaces: %+v", sel)
 	if len(sel.names) != 0 {
-		return findInterfacesByNames(log, pkgs, sel.names)
+		return selectInterfacesByNames(log, pkgs, sel.names)
+	}
+	if sel.allPackage {
+		return selectAllPackageInterfaces(log, pkgs, sel)
 	}
 	if sel.allFile {
-		interfaces, err := findAllPackageInterfaces(log, pkgs, sel)
-		if err != nil {
-			return interfaces, err
+		if !sel.goGenEnv.isSet() {
+			log.Panic("Validation failed: 'all-file' selector passed but no 'go generate' env set")
 		}
+		return selectAllFileInterfaces(log, pkgs, sel.goGenEnv)
 	}
-	if sel.allFile {
-		return findAllFileInterfaces(log, pkgs, sel.goGenEnv)
+	if !sel.goGenEnv.isSet() {
+		log.Panic("Validation failed: neither selector passed nor 'go generate' env set")
 	}
-	return findInterfaceCorrespondingToGoGenerateComment(log, pkgs, sel.goGenEnv)
+	return selectInterfaceCorrespondingToGoGenerateComment(log, pkgs, sel.goGenEnv)
 }
 
-func findInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string) ([]gmg.Interface, error) {
+func selectInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, interfaceNames []string) ([]gmg.Interface, error) {
 	srcPrimaryPkg := pkgs[0]
+	log.Infof("Selecting package '%s' interface names: %s", srcPrimaryPkg.PkgPath, interfaceNames)
 	var ifaces []gmg.Interface
 	for _, interfaceName := range interfaceNames {
 		var obj types.Object
@@ -75,7 +80,7 @@ func findInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, int
 	return ifaces, nil
 }
 
-func findInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkgs []*packages.Package, goGenEnv goGenerateEnv) ([]gmg.Interface, error) {
+func selectInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkgs []*packages.Package, goGenEnv goGenerateEnv) ([]gmg.Interface, error) {
 	pkg := getPackageByKind(pkgs, goGenEnv.packageKind())
 	if pkg == nil {
 		return nil, fmt.Errorf(
@@ -85,7 +90,7 @@ func findInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkgs 
 		)
 	}
 
-	// Need to find GOFILE declaration just after GOLINE.
+	// Need to select GOFILE declaration just after GOLINE.
 	// GOFILE AST needed for that.
 	// It can be loaded by packages.Load with packages.Syntax mode,
 	// and that cause packages.Package.TypesInfo computation for all package files.
@@ -175,7 +180,7 @@ func correspondingTypeSpec(fset *token.FileSet, file *ast.File, goline int, pars
 	}
 }
 
-func findAllPackageInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, sel interfaceSelector) ([]gmg.Interface, error) {
+func selectAllPackageInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, sel interfaceSelector) ([]gmg.Interface, error) {
 	// TODO(skipor): support both test packages from flags too (--primary-pkg --test-pkg, --black-box-test-pkg ?)
 	pkgKind := sel.goGenEnv.packageKind()
 	pkg := getPackageByKind(pkgs, pkgKind)
@@ -186,7 +191,7 @@ func findAllPackageInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, 
 			pkgKind,
 		)
 	}
-	ifaces := findAllPkgInterfaces(log, pkg)
+	ifaces := selectAllPkgInterfaces(log, pkg)
 	if len(ifaces) == 0 {
 		return nil, fmt.Errorf("no interfaces found in package %s", pkg.ID)
 	}
@@ -203,8 +208,8 @@ func subtractPrimaryPackageInterfaces(log *zap.SugaredLogger, pkgs []*packages.P
 	primaryPkg := getPackageByKind(pkgs, primaryPackageKind)
 	if primaryPkg != nil {
 		var onlyTest []gmg.Interface
-		log.Debugf("Origin package kind is 'test', so let's substract interfaces from 'primary'")
-		primaryIfaces := findAllPkgInterfaces(log, primaryPkg)
+		log.Debugf("Origin package kind is 'test', so substracting interfaces from 'primary'")
+		primaryIfaces := selectAllPkgInterfaces(log, primaryPkg)
 		primarySet := map[string]struct{}{}
 		for _, iface := range primaryIfaces {
 			primarySet[iface.Name] = struct{}{}
@@ -226,7 +231,7 @@ func subtractPrimaryPackageInterfaces(log *zap.SugaredLogger, pkgs []*packages.P
 	return ifaces
 }
 
-func findAllPkgInterfaces(log *zap.SugaredLogger, pkg *packages.Package) []gmg.Interface {
+func selectAllPkgInterfaces(log *zap.SugaredLogger, pkg *packages.Package) []gmg.Interface {
 	// TODO(skipor): handle unexported methods and interfaces
 	log.Debugf("Selecting all interfaces from package %s of kind '%s'", pkg.ID, getPackageKind(pkg))
 	var ifaces []gmg.Interface
@@ -248,7 +253,7 @@ func findAllPkgInterfaces(log *zap.SugaredLogger, pkg *packages.Package) []gmg.I
 	return ifaces
 }
 
-func findAllFileInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, env goGenerateEnv) ([]gmg.Interface, error) {
+func selectAllFileInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, env goGenerateEnv) ([]gmg.Interface, error) {
 	panic("NIY")
 }
 

@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-const gmgVersion = "v0.3.0"
+const gmgVersion = "v0.6.0"
 
 func Main(env *Environment) int {
 	params, err := loadParams(env)
@@ -190,6 +190,13 @@ func loadParams(env *Environment) (*params, error) {
 		return nil, fmt.Errorf("pass interface names as arguments.\n" +
 			"Or put `//go:generate gmg` comment before interface declaration and run `go generate`.\n" +
 			"Or run `gmg --help` to get more information.")
+	}
+
+	if all && allFile {
+		return nil, fmt.Errorf("can't use --all and --all-file together")
+	}
+	if allFile && !goGenerateEnv.isSet() {
+		return nil, fmt.Errorf("--all-file can be used only when gmg called from //go:generate comment")
 	}
 
 	return &params{

@@ -18,7 +18,6 @@ func TestTrivial(t *testing.T) {
 		Gmg(t, "Foo").Succeed().
 		Golden()
 }
-
 func TestTrivial_TestOnly(t *testing.T) {
 	tr := newTester(t, M{
 		Name: "pkg",
@@ -153,5 +152,18 @@ func TestPackageNameConflictFail(t *testing.T) {
 		},
 	})
 	tr.Gmg(t, "Foo").Fail()
+}
+
+func TestConsoleNamesSelect_NoArgs(t *testing.T) {
+	tr := newTester(t, M{
+		Name: "pkg",
+		Files: map[string]interface{}{
+			"file.go": /* language=go */ `
+			package pkg
+			type Foo interface { Bar() string }
+			`,
+		},
+	})
+	tr.Gmg(t).Fail()
 }
 

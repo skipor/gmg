@@ -91,7 +91,7 @@ func generateAll(env *Environment, pkgs []*packages.Package, params *params) ([]
 
 	g := gmg.NewGMG(log)
 
-	ifaces, err := findInterfaces(log, pkgs, params.Selector)
+	ifaces, err := selectInterfaces(log, pkgs, params.Selector)
 	if err != nil {
 		return nil, err
 	}
