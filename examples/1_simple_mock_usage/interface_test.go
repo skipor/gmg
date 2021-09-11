@@ -1,4 +1,4 @@
-package simple_mock_usage
+package example
 
 import (
 	"testing"

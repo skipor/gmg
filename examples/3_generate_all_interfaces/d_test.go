@@ -1,3 +1,3 @@
-package primary_test
+package example_test
 
 type Forth interface{ Blum() }

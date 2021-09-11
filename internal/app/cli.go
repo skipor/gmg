@@ -214,10 +214,10 @@ func loadParams(env *Environment) (*params, error) {
 		Destination: path.Clean(dst),
 		Package:     pkg,
 		Selector: interfaceSelector{
-			names:      interfaces,
-			goGenEnv:   goGenerateEnv,
-			allPackage: all,
-			allFile:    allFile,
+			names:    interfaces,
+			goGenEnv: goGenerateEnv,
+			all:      all,
+			allFile:  allFile,
 		},
 	}, nil
 

@@ -17,10 +17,10 @@ import (
 )
 
 type interfaceSelector struct {
-	names      []string
-	allPackage bool
-	allFile    bool
-	goGenEnv   goGenerateEnv
+	names    []string
+	all      bool
+	allFile  bool
+	goGenEnv goGenerateEnv
 }
 
 func selectInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, sel interfaceSelector) ([]gmg.Interface, error) {
@@ -28,8 +28,8 @@ func selectInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, sel inte
 	if len(sel.names) != 0 {
 		return selectInterfacesByNames(log, pkgs, sel.names)
 	}
-	if sel.allPackage {
-		return selectAllPackageInterfaces(log, pkgs, sel)
+	if sel.all {
+		return selectAllPrimaryPackageInterfaces(log, pkgs)
 	}
 	if sel.allFile {
 		if !sel.goGenEnv.isSet() {
@@ -180,29 +180,18 @@ func correspondingTypeSpec(fset *token.FileSet, file *ast.File, goline int, pars
 	}
 }
 
-func selectAllPackageInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, sel interfaceSelector) ([]gmg.Interface, error) {
-	// TODO(skipor): support both test packages from flags too (--primary-pkg --test-pkg, --black-box-test-pkg ?)
-	pkgKind := sel.goGenEnv.packageKind()
-	pkg := getPackageByKind(pkgs, pkgKind)
+func selectAllPrimaryPackageInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package) ([]gmg.Interface, error) {
+	// TODO(skipor): support both test packages from flags (--primary-pkg --test-pkg, --black-box-test-pkg ?)
+	//   or --all-test for both test packages?
+	pkg := getPackageByKind(pkgs, primaryPackageKind)
 	if pkg == nil {
-		return nil, fmt.Errorf(
-			"'go generate' env variables indicates that package kind is '%s' but it is not found in loaded packages.\n"+
-				goEnvErrMsg,
-			pkgKind,
-		)
+		log.Infof("There is no non *_test.go files, so --all selector doesn't select anythig")
+		return nil, nil
 	}
 	ifaces := selectAllPkgInterfaces(log, pkg)
 	if len(ifaces) == 0 {
-		return nil, fmt.Errorf("no interfaces found in package '%s'", pkg.ID)
-	}
-	if pkgKind == testPackageKind {
-		ifaces = subtractPrimaryPackageInterfaces(log, pkgs, ifaces)
-		if len(ifaces) == 0 {
-			return nil, fmt.Errorf("no 'test only' interfaces found in package '%s'.\n"+
-				"That is, no interfaces found in *_test.go files without package *_test.\n"+
-				"Put //go:generate in non *_test.go file to generate mocks for all non-test interfaces.",
-				pkg.PkgPath)
-		}
+		log.Infof("No interfaces found in non *_test.go files")
+		return nil, nil
 	}
 	return ifaces, nil
 }
