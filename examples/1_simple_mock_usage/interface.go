@@ -1,4 +1,4 @@
-package simple_mock_usage
+package example
 
 // `//go:generate gmg` without interface names arguments generates mock for next type declaration.
 // That is, that comment generates mock for Foo.

@@ -1,4 +1,4 @@
-package target_interface_selection
+package example
 
 import (
 	"go.uber.org/zap/zapcore"

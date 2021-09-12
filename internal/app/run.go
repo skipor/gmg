@@ -5,7 +5,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/iancoleman/strcase"
@@ -17,15 +16,15 @@ import (
 )
 
 type params struct {
-	Log            *zap.SugaredLogger
-	InterfaceNames []string
+	Log *zap.SugaredLogger
 	// Source is Go package to search for interfaces. See flag description for details.
 	Source string
 	// Destination is directory or file relative path or pattern. See flag description for details.
 	Destination string
 	// Package is package name in generated files. See flag description for details.
-	Package       string
-	GoGenerateEnv goGenerateEnv
+	Package string
+
+	Selector interfaceSelector
 }
 
 type goGenerateEnv struct {
@@ -39,7 +38,6 @@ type goGenerateEnv struct {
 
 func run(env *Environment, params *params) error {
 	log := params.Log
-	log.Debugf("gmg version %s %s/%s", gmgVersion, runtime.GOOS, runtime.GOARCH)
 	pkgs, err := loadPackages(log, env, params.Source)
 	if err != nil {
 		errStr := err.Error()
@@ -91,7 +89,7 @@ func generateAll(env *Environment, pkgs []*packages.Package, params *params) ([]
 
 	g := gmg.NewGMG(log)
 
-	ifaces, err := findInterfaces(log, pkgs, params.InterfaceNames, params.GoGenerateEnv)
+	ifaces, err := selectInterfaces(log, pkgs, params.Selector)
 	if err != nil {
 		return nil, err
 	}

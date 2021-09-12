@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -16,9 +17,15 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-const gmgVersion = "v0.3.0"
+const gmgVersion = "v0.6.0"
 
 func Main(env *Environment) int {
+	isGoGenerate := env.Getenv("GOFILE") != ""
+	if isGoGenerate {
+		// Separate different 'go generate' run logs
+		fmt.Fprintf(env.Stderr, "\n")
+		defer fmt.Fprintf(env.Stderr, "\n")
+	}
 	params, err := loadParams(env)
 	if errors.Is(err, errExitZero) {
 		return 0
@@ -102,6 +109,8 @@ func loadParams(env *Environment) (*params, error) {
 		dst     string
 		debug   bool
 		version bool
+		all     bool
+		allFile bool
 	)
 	fs.StringVarP(&src, "src", "s", ".",
 		"Source Go package to search for interfaces. Absolute or relative.\n"+
@@ -130,6 +139,13 @@ func loadParams(env *Environment) (*params, error) {
 			"Examples:\n"+
 			"	mocks_{} # mockgen style\n"+
 			"	{}mocks # mockery style\n")
+	fs.BoolVar(&all, "all", false,
+		"Select all interfaces in package.\n"+
+			"When called from //go:generate comment then package kind selected automatically: primary - other than *_test.go files; test - *_test.go files; black-box-test - package *_test\n",
+	)
+	fs.BoolVar(&allFile, "all-file", false,
+		"Select all interfaces in current file, when called from //go:generate comment .\n",
+	)
 	fs.BoolVar(&debug, "debug", os.Getenv("GMG_DEBUG") != "", "Verbose debug logging.")
 	fs.BoolVar(&version, "version", false, "Show version and exit.")
 	err := fs.Parse(env.Args)
@@ -158,7 +174,9 @@ func loadParams(env *Environment) (*params, error) {
 		zapcore.NewConsoleEncoder(encConf),
 		zapcore.AddSync(env.Stderr),
 		level,
-	))
+	)).Sugar()
+	log.Debugf("gmg version %s %s/%s", gmgVersion, runtime.GOOS, runtime.GOARCH)
+	log.Debugf("Run as: %q", os.Args)
 
 	interfaces := fs.Args()
 
@@ -176,20 +194,31 @@ func loadParams(env *Environment) (*params, error) {
 		GOFILE:    env.Getenv("GOFILE"),
 		GOPACKAGE: env.Getenv("GOPACKAGE"),
 	}
-	log.Sugar().Debugf("Go env: %+v", goGenerateEnv)
-	if !goGenerateEnv.isSet() && len(interfaces) == 0 {
-		return nil, fmt.Errorf("pass interface names as arguments.\n" +
+	log.Debugf("Go env: %+v", goGenerateEnv)
+	if !goGenerateEnv.isSet() && len(interfaces) == 0 && !all && !allFile {
+		return nil, fmt.Errorf("pass interface names as arguments or use interface names selector like '--all'.\n" +
 			"Or put `//go:generate gmg` comment before interface declaration and run `go generate`.\n" +
-			"Or run `gmg --help` to get more information.")
+			"Run `gmg --help` to get more information.")
+	}
+
+	if all && allFile {
+		return nil, fmt.Errorf("can't use --all and --all-file together")
+	}
+	if allFile && !goGenerateEnv.isSet() {
+		return nil, fmt.Errorf("--all-file can be used only when gmg called from //go:generate comment")
 	}
 
 	return &params{
-		Log:            log.Sugar(),
-		Source:         src,
-		Destination:    path.Clean(dst),
-		Package:        pkg,
-		InterfaceNames: interfaces,
-		GoGenerateEnv:  goGenerateEnv,
+		Log:         log,
+		Source:      src,
+		Destination: path.Clean(dst),
+		Package:     pkg,
+		Selector: interfaceSelector{
+			names:    interfaces,
+			goGenEnv: goGenerateEnv,
+			all:      all,
+			allFile:  allFile,
+		},
 	}, nil
 
 }

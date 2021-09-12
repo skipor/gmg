@@ -41,7 +41,7 @@ func TestExamplesGoGenerate(t *testing.T) {
 					t.Fatalf("diff before generate:\n%s", diff)
 				}
 			}
-			cmd := exec.Command("go", "generate", "./"+dir+"/...")
+			cmd := exec.Command("go", "generate", "-x", "./"+dir+"/...")
 			cmd.Env = append(os.Environ(), "GMG_DEBUG=true", PATH)
 			out, err := cmd.CombinedOutput()
 			t.Logf("%s\n%s", cmd.String(), out)
