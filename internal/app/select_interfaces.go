@@ -81,32 +81,12 @@ func selectInterfacesByNames(log *zap.SugaredLogger, pkgs []*packages.Package, i
 }
 
 func selectInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkgs []*packages.Package, goGenEnv goGenerateEnv) ([]gmg.Interface, error) {
-	pkg := getPackageByKind(pkgs, goGenEnv.packageKind())
-	if pkg == nil {
-		return nil, fmt.Errorf(
-			"'go generate' env variables indicates that package kind is '%s' but it is not found in loaded packages.\n"+
-				goEnvErrMsg,
-			goGenEnv.packageKind(),
-		)
+	pkg, file, fset, parseErr, err := parseGoGenerateCommentFile(log, pkgs, goGenEnv)
+	if err != nil {
+		return nil, err
 	}
 
-	// Need to select GOFILE declaration just after GOLINE.
-	// GOFILE AST needed for that.
-	// It can be loaded by packages.Load with packages.Syntax mode,
-	// and that cause packages.Package.TypesInfo computation for all package files.
-	// So, seems that it is cheaper to parse only GOFILE by ourselves.
-
-	file, fset, parseErr := parseGOFILE(pkg, goGenEnv.GOFILE)
-	if parseErr != nil {
-		if file == nil {
-			return nil, fmt.Errorf("GOFILE '%s' parse: %w", goGenEnv.GOFILE, parseErr)
-		}
-		// These errors should be already logged after package load.
-		log.Infof("GOFILE '%s' parse recoverable errors: %+v", goGenEnv.GOFILE, parseErr)
-		return nil, parseErr
-	}
-
-	typeSpec, err := correspondingTypeSpec(fset, file, goGenEnv.GOLINE, parseErr)
+	typeSpec, err := correspondingTypeSpec(file, fset, goGenEnv.GOLINE, parseErr)
 	if err != nil {
 		return nil, err
 	}
@@ -122,9 +102,9 @@ func selectInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkg
 	}
 	typ := obj.Type()
 	if !types.IsInterface(typ) {
-		return nil, fmt.Errorf("`//go:generate` comment corresponding to type declaration at %s %s, which is not interface but: %s %s",
-			typ.String(),
+		return nil, fmt.Errorf("`//go:generate` comment corresponding to type declaration at %s, which is not interface but: %s %s",
 			pos(fset, typeSpec),
+			typ.String(),
 			typ.Underlying().String(),
 		)
 	}
@@ -136,7 +116,33 @@ func selectInterfaceCorrespondingToGoGenerateComment(log *zap.SugaredLogger, pkg
 	}}, nil
 }
 
-func correspondingTypeSpec(fset *token.FileSet, file *ast.File, goline int, parseErr error) (*ast.TypeSpec, error) {
+func parseGoGenerateCommentFile(log *zap.SugaredLogger, pkgs []*packages.Package, goGenEnv goGenerateEnv) (*packages.Package, *ast.File, *token.FileSet, error, error) {
+	pkg := getPackageByKind(pkgs, goGenEnv.packageKind())
+	if pkg == nil {
+		return nil, nil, nil, nil, fmt.Errorf(
+			"'go generate' env variables indicates that package kind is '%s' but it is not found in loaded packages.\n"+
+				goEnvErrMsg,
+			goGenEnv.packageKind(),
+		)
+	}
+
+	// AST can be loaded by packages.Load with packages.Syntax mode,
+	// and that cause packages.Package.TypesInfo computation for all package files.
+	// So, seems that it is cheaper to parse only GOFILE by ourselves.
+
+	file, fset, parseErr := parseGOFILE(pkg, goGenEnv.GOFILE)
+	if parseErr != nil {
+		if file == nil {
+			return nil, nil, nil, nil, fmt.Errorf("GOFILE '%s' parse: %w", goGenEnv.GOFILE, parseErr)
+		}
+		// These errors should be already logged after package load.
+		log.Infof("GOFILE '%s' parse recoverable errors: %+v", goGenEnv.GOFILE, parseErr)
+		return nil, nil, nil, nil, parseErr
+	}
+	return pkg, file, fset, parseErr, nil
+}
+
+func correspondingTypeSpec(file *ast.File, fset *token.FileSet, goline int, parseErr error) (*ast.TypeSpec, error) {
 	decl := lineDecl(fset, file, goline)
 	if decl == nil {
 		return nil, fmt.Errorf("there is no type declarations after `//go:generate` comment.\n" +
@@ -196,33 +202,6 @@ func selectAllPrimaryPackageInterfaces(log *zap.SugaredLogger, pkgs []*packages.
 	return ifaces, nil
 }
 
-func subtractPrimaryPackageInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, ifaces []gmg.Interface) []gmg.Interface {
-	primaryPkg := getPackageByKind(pkgs, primaryPackageKind)
-	if primaryPkg != nil {
-		var onlyTest []gmg.Interface
-		log.Debugf("Origin package kind is 'test', so substracting interfaces from 'primary'")
-		primaryIfaces := selectAllPkgInterfaces(log, primaryPkg)
-		primarySet := map[string]struct{}{}
-		for _, iface := range primaryIfaces {
-			primarySet[iface.Name] = struct{}{}
-		}
-		for _, iface := range ifaces {
-			_, ok := primarySet[iface.Name]
-			if ok {
-				continue
-			}
-			onlyTest = append(onlyTest, iface)
-		}
-		log.Debugf("Primary package interfaces are: %s", ifaceNames(primaryIfaces))
-		log.Debugf("Test package interfaces are: %s", ifaceNames(ifaces))
-		log.Debugf("Test only files interfaces are: %s", ifaceNames(onlyTest))
-		ifaces = onlyTest
-	} else {
-		log.Debugf("Package kind is 'test' and no 'primary' package present")
-	}
-	return ifaces
-}
-
 func selectAllPkgInterfaces(log *zap.SugaredLogger, pkg *packages.Package) []gmg.Interface {
 	// TODO(skipor): handle unexported methods and interfaces
 	log.Debugf("Selecting all interfaces from package %s of kind '%s'", pkg.ID, getPackageKind(pkg))
@@ -245,8 +224,45 @@ func selectAllPkgInterfaces(log *zap.SugaredLogger, pkg *packages.Package) []gmg
 	return ifaces
 }
 
-func selectAllFileInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, env goGenerateEnv) ([]gmg.Interface, error) {
-	panic("NIY")
+func selectAllFileInterfaces(log *zap.SugaredLogger, pkgs []*packages.Package, goGenEnv goGenerateEnv) ([]gmg.Interface, error) {
+	pkg, file, fset, _, err := parseGoGenerateCommentFile(log, pkgs, goGenEnv)
+	if err != nil {
+		return nil, err
+	}
+	var ifaces []gmg.Interface
+	for _, decl := range file.Decls {
+		decl, ok := decl.(*ast.GenDecl)
+		if !ok {
+			continue
+		}
+		if decl.Tok != token.TYPE {
+			continue
+		}
+		for _, spec := range decl.Specs {
+			spec := spec.(*ast.TypeSpec)
+			name := spec.Name.Name
+			obj := pkg.Types.Scope().Lookup(name)
+			if obj == nil {
+				log.Warnf("Type '%s' declaration at %s type is not deduced. "+
+					"See package load errors warning for details.",
+					name,
+					pos(fset, spec),
+				)
+				continue
+			}
+			log.Debugf("Name %s is %T which type is %T, and underlying type is %T", name, obj, obj.Type(), obj.Type().Underlying())
+			typ := obj.Type()
+			if !types.IsInterface(typ) {
+				continue
+			}
+			ifaces = append(ifaces, gmg.Interface{
+				Name:       name,
+				ImportPath: pkg.PkgPath,
+				Type:       typ.Underlying().(*types.Interface),
+			})
+		}
+	}
+	return ifaces, nil
 }
 
 func lineDecl(fset *token.FileSet, file *ast.File, goline int) ast.Decl {
