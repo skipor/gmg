@@ -69,6 +69,17 @@ func (m_ *MockFoo) NoArgsAndResults() {
 	return
 }
 
+// OnlyVariadicArgs implements mocked interface.
+func (m_ *MockFoo) OnlyVariadicArgs(as ...int) {
+	m_.ctrl.T.Helper()
+	args_ := []interface{}{}
+	for _, a := range as {
+		args_ = append(args_, a)
+	}
+	m_.ctrl.Call(m_, "OnlyVariadicArgs", args_...)
+	return
+}
+
 // ReservedArgNames implements mocked interface.
 func (m_ *MockFoo) ReservedArgNames(c int, r int, m int, res int, call int, reflect2 int, gomock2 int) {
 	m_.ctrl.T.Helper()
@@ -101,7 +112,11 @@ func (m_ *MockFoo) UnderscoreArgsAndResults(arg int) (_ int) {
 // VariadicArgs implements mocked interface.
 func (m_ *MockFoo) VariadicArgs(f string, as ...int) {
 	m_.ctrl.T.Helper()
-	m_.ctrl.Call(m_, "VariadicArgs", f, as)
+	args_ := []interface{}{f}
+	for _, a := range as {
+		args_ = append(args_, a)
+	}
+	m_.ctrl.Call(m_, "VariadicArgs", args_...)
 	return
 }
 
@@ -275,6 +290,28 @@ func (c_ MockFooNoArgsAndResultsCall) Do(f func()) MockFooNoArgsAndResultsCall {
 	return c_
 }
 
+//   OnlyVariadicArgs(as ...int)
+func (r_ *MockFooMockRecorder) OnlyVariadicArgs(as ...interface{}) MockFooOnlyVariadicArgsCall {
+	r_.ctrl.T.Helper()
+	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "OnlyVariadicArgs", reflect.TypeOf((*MockFoo)(nil).OnlyVariadicArgs), as...)
+	return MockFooOnlyVariadicArgsCall{call}
+}
+
+// MockFooOnlyVariadicArgsCall is type safe wrapper of *gomock.Call.
+type MockFooOnlyVariadicArgsCall struct{ *gomock.Call }
+
+// DoAndReturn is type safe wrapper of *gomock.Call DoAndReturn.
+func (c_ MockFooOnlyVariadicArgsCall) DoAndReturn(f func(as ...int)) MockFooOnlyVariadicArgsCall {
+	c_.Call.DoAndReturn(f)
+	return c_
+}
+
+// Do is type safe wrapper of *gomock.Call Do.
+func (c_ MockFooOnlyVariadicArgsCall) Do(f func(as ...int)) MockFooOnlyVariadicArgsCall {
+	c_.Call.Do(f)
+	return c_
+}
+
 //   ReservedArgNames(c int, r int, m int, res int, call int, reflect int, gomock int)
 func (r_ *MockFooMockRecorder) ReservedArgNames(c interface{}, r interface{}, m interface{}, res interface{}, call interface{}, reflect2 interface{}, gomock2 interface{}) MockFooReservedArgNamesCall {
 	r_.ctrl.T.Helper()
@@ -354,9 +391,10 @@ func (c_ MockFooUnderscoreArgsAndResultsCall) Return(res0 int) MockFooUnderscore
 }
 
 //   VariadicArgs(f string, as ...int)
-func (r_ *MockFooMockRecorder) VariadicArgs(f interface{}, as interface{}) MockFooVariadicArgsCall {
+func (r_ *MockFooMockRecorder) VariadicArgs(f interface{}, as ...interface{}) MockFooVariadicArgsCall {
 	r_.ctrl.T.Helper()
-	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "VariadicArgs", reflect.TypeOf((*MockFoo)(nil).VariadicArgs), f, as)
+	args_ := append([]interface{}{f}, as...)
+	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "VariadicArgs", reflect.TypeOf((*MockFoo)(nil).VariadicArgs), args_...)
 	return MockFooVariadicArgsCall{call}
 }
 
