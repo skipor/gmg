@@ -153,6 +153,7 @@ func (g *fileGenerator) genMock() {
 func (g *fileGenerator) genMockMethod(method *types.Func) {
 	scope := g.NewFuncScope()
 	receiver := scope.Declare(mockReceiver)
+	varArg := scope.Declare("args_")
 	sig := method.Type().(*types.Signature)
 	results := sig.Results()
 	g.L(`// `, method.Name(), ` implements mocked interface.`)
@@ -164,13 +165,32 @@ func (g *fileGenerator) genMockMethod(method *types.Func) {
 	g.L(" {")
 
 	res := scope.Declare("res_")
+	lastParam := len(paramsNames) - 1
 	g.L(receiver, `.ctrl.T.Helper()`)
+	if sig.Variadic() {
+		g.P(varArg, ` := []interface{}{`)
+		for i, name := range paramsNames[:lastParam] {
+			if i != 0 {
+				g.P(", ")
+			}
+			g.P(name)
+		}
+		g.L("}")
+		g.P(`for _, a := range `, paramsNames[lastParam], ` {
+			`, varArg, ` = append(`, varArg, `, a)
+		}
+		`)
+	}
 	if results.Len() > 0 {
 		g.P(res, ` := `)
 	}
 	g.P(receiver, `.ctrl.Call(`, receiver, `, "`, method.Name(), `"`)
-	for _, paramName := range paramsNames {
-		g.P(", ", paramName)
+	if sig.Variadic() {
+		g.P(", ", varArg, "...")
+	} else {
+		for _, paramName := range paramsNames {
+			g.P(", ", paramName)
+		}
 	}
 	g.L(")")
 	for i := 0; i < results.Len(); i++ {
@@ -300,14 +320,34 @@ func (g *fileGenerator) genRecorderMethod(method *types.Func) {
 	})
 	g.L()
 	g.P(`func (`, receiver, ` *`, g.recorderName, `) `, method.Name(), `(`)
-	paramsNames := g.genRecorderMethodParams(sig.Params(), scope)
+	paramsNames := g.genRecorderMethodParams(sig, scope)
 	g.L(`) `, callWrapperName, ` {`)
 	g.L(receiver, `.ctrl.T.Helper()`)
 
 	callVarName := scope.Declare("call")
+	varArg := scope.Declare("args_")
+	lastParam := len(paramsNames) - 1
+	if sig.Variadic() {
+		if len(paramsNames) == 1 {
+			varArg = paramsNames[0]
+		} else {
+			g.P(varArg, ` := append([]interface{}{`)
+			for i, name := range paramsNames[:lastParam] {
+				if i != 0 {
+					g.P(", ")
+				}
+				g.P(name)
+			}
+			g.L("}, ", paramsNames[lastParam], "...)")
+		}
+	}
 	g.P(callVarName, ` := `, receiver, `.ctrl.RecordCallWithMethodType(`, receiver, `.mock(), "`, method.Name(), `", reflect.TypeOf((*`, g.mockName, `)(nil).`, method.Name(), `)`)
-	for _, paramName := range paramsNames {
-		g.P(", ", paramName)
+	if sig.Variadic() {
+		g.P(", ", varArg, "...")
+	} else {
+		for _, paramName := range paramsNames {
+			g.P(", ", paramName)
+		}
 	}
 	g.L(")")
 
@@ -317,7 +357,8 @@ func (g *fileGenerator) genRecorderMethod(method *types.Func) {
 	g.genGomockCallWrapper(callWrapperName, method.Type().(*types.Signature))
 }
 
-func (g *fileGenerator) genRecorderMethodParams(params *types.Tuple, scope *gogen.Scope) []string {
+func (g *fileGenerator) genRecorderMethodParams(sig *types.Signature, scope *gogen.Scope) []string {
+	params := sig.Params()
 	var paramNames []string
 	for i, l := 0, params.Len(); i < l; i++ {
 		param := params.At(i)
@@ -326,7 +367,11 @@ func (g *fileGenerator) genRecorderMethodParams(params *types.Tuple, scope *goge
 		if i != 0 {
 			g.P(", ")
 		}
-		g.P(name, " interface{}")
+		g.P(name, " ")
+		if sig.Variadic() && i == l-1 {
+			g.P("...")
+		}
+		g.P("interface{}")
 	}
 	return paramNames
 }

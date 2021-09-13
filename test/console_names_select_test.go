@@ -64,6 +64,7 @@ func TestConsoleNamesSelect_ConsoleNamesSelect_SignatureCornerCases(t *testing.T
 			type Foo interface { 
 				NoArgsAndResults() 
 				NamedArgsAndResults(a int) (b int)
+				OnlyVariadicArgs(as ...int) 
 				VariadicArgs(f string, as ...int) 
 				UnderscoreArgsAndResults(_ int) (_ int)
 				ReservedArgNames(c, r, m, res, call, reflect, gomock int) 
