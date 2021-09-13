@@ -36,11 +36,17 @@ Please fix a specific version, if you use `gmg` in automation.
 ## Usage
 
 ```
-$ gmg is type-safe, fast and handy alternative GoMock generator. See details at: https://github.com/skipor/gmg
+$ gmg --help
+gmg is type-safe, fast and handy alternative GoMock generator. See details at: https://github.com/skipor/gmg
 
 Usage: gmg [--src <package path>] [--dst <file path>] [--pkg <package name>] <interface name> [<interface name> ...]
 
 Flags:
+      --all          Select all interfaces in package.
+                     When called from //go:generate comment then package kind selected automatically: primary - other than *_test.go files; test - *_test.go files; black-box-test - package *_test
+
+      --all-file     Select all interfaces in current file, when called from //go:generate comment .
+
       --debug        Verbose debug logging.
   -d, --dst string   Destination directory or file relative path or pattern.
                      '{}' in directory path will be replaced with the source package name.
@@ -54,10 +60,11 @@ Flags:
                       (default "./mocks")
   -p, --pkg string   Package name in generated files.
                      '{}' will be replaced with source package name.
+                     By default, --dst package name used, or 'mocks_{}' if --dst package is not exist.
                      Examples:
                      	mocks_{} # mockgen style
                      	{}mocks # mockery style
-                      (default "mocks_{}")
+
   -s, --src string   Source Go package to search for interfaces. Absolute or relative.
                      Maybe third-party or standard library package.
                      Examples:
@@ -66,7 +73,7 @@ Flags:
                      	github.com/third-party/pkg
                      	io
                       (default ".")
-      --version      Show version and exit.
+      --version      Show version and exit
 ```
 
 ## Speed measures
