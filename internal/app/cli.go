@@ -17,7 +17,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-const gmgVersion = "v0.6.0"
+const gmgVersion = "0.8.0"
 
 func Main(env *Environment) int {
 	isGoGenerate := env.Getenv("GOFILE") != ""
