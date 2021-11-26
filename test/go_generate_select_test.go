@@ -130,12 +130,25 @@ func TestGoGenerateSelect_ImplicitPackageName_Deduce(t *testing.T) {
 		Files: map[string]interface{}{
 			"file.go": /* language=go */ `
 			package pkg
-			//go:generate gmg
-			
+			//go:generate gmg Foo
 			type Foo interface { Bar() string }
 			`,
 			"mocks/doc.go": /* language=go */ `
 			package custom_mocks_dir_package
+			`,
+		},
+	})
+	tr.GoGenerate(t).Succeed().Golden()
+}
+
+func TestGoGenerateSelect_ImplicitPackageName_FileDst(t *testing.T) {
+	tr := newTester(t, M{
+		Name: "pkg",
+		Files: map[string]interface{}{
+			"file.go": /* language=go */ `
+			package pkg
+			//go:generate gmg Foo --dst ./foo_mock_test.go
+			type Foo interface { Bar() string }
 			`,
 		},
 	})

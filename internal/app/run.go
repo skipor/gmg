@@ -78,6 +78,9 @@ func generateAll(env *Environment, pkgs []*packages.Package, params *params) ([]
 	fileNamePattern := placeHolder + ".go"
 	if path.Ext(dstDir) == ".go" {
 		dstDir, fileNamePattern = path.Split(dstDir)
+		if dstDir == "" {
+			dstDir = "."
+		}
 	}
 	dstDir = strings.ReplaceAll(dstDir, placeHolder, srcPrimaryPkg.Name)
 
@@ -124,7 +127,7 @@ func getPackageName(log *zap.SugaredLogger, packageNameTemplate string, dstDir s
 		return executePackageNameTemplate(packageNameTemplate, srcPrimaryPkg), nil
 	}
 	if _, err := os.Stat(dstDir); os.IsNotExist(err) {
-		log.Debugf("Package name is not set, but destination dir is not exist - using default")
+		log.Debugf("Package name is not set, but destination dir '%s' is not exist - using default", dstDir)
 		return executePackageNameTemplate(defaultPackageNameTemplate, srcPrimaryPkg), nil
 	}
 
