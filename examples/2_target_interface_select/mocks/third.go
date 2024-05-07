@@ -32,7 +32,7 @@ func (m_ *MockThird) Three() {
 // MockThirdMockRecorder is the mock recorder for MockThird.
 type MockThirdMockRecorder MockThird
 
-//   Three()
+// Three()
 func (r_ *MockThirdMockRecorder) Three() MockThirdThreeCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "Three", reflect.TypeOf((*MockThird)(nil).Three))

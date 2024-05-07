@@ -32,7 +32,7 @@ func (m_ *MockA2) A2() {
 // MockA2MockRecorder is the mock recorder for MockA2.
 type MockA2MockRecorder MockA2
 
-//   A2()
+// A2()
 func (r_ *MockA2MockRecorder) A2() MockA2A2Call {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "A2", reflect.TypeOf((*MockA2)(nil).A2))

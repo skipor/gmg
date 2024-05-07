@@ -33,7 +33,7 @@ func (m_ *MockCloser) Close() error {
 // MockCloserMockRecorder is the mock recorder for MockCloser.
 type MockCloserMockRecorder MockCloser
 
-//   Close() error
+// Close() error
 func (r_ *MockCloserMockRecorder) Close() MockCloserCloseCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "Close", reflect.TypeOf((*MockCloser)(nil).Close))

@@ -67,7 +67,7 @@ func (m_ *MockCore) Write(arg zapcore.Entry, arg2 []zapcore.Field) error {
 // MockCoreMockRecorder is the mock recorder for MockCore.
 type MockCoreMockRecorder MockCore
 
-//   Check(zapcore.Entry, *zapcore.CheckedEntry) *zapcore.CheckedEntry
+// Check(zapcore.Entry, *zapcore.CheckedEntry) *zapcore.CheckedEntry
 func (r_ *MockCoreMockRecorder) Check(arg interface{}, arg2 interface{}) MockCoreCheckCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "Check", reflect.TypeOf((*MockCore)(nil).Check), arg, arg2)
@@ -95,7 +95,7 @@ func (c_ MockCoreCheckCall) Return(res0 *zapcore.CheckedEntry) MockCoreCheckCall
 	return c_
 }
 
-//   Enabled(zapcore.Level) bool
+// Enabled(zapcore.Level) bool
 func (r_ *MockCoreMockRecorder) Enabled(arg interface{}) MockCoreEnabledCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "Enabled", reflect.TypeOf((*MockCore)(nil).Enabled), arg)
@@ -123,7 +123,7 @@ func (c_ MockCoreEnabledCall) Return(res0 bool) MockCoreEnabledCall {
 	return c_
 }
 
-//   Sync() error
+// Sync() error
 func (r_ *MockCoreMockRecorder) Sync() MockCoreSyncCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "Sync", reflect.TypeOf((*MockCore)(nil).Sync))
@@ -151,7 +151,7 @@ func (c_ MockCoreSyncCall) Return(res0 error) MockCoreSyncCall {
 	return c_
 }
 
-//   With([]zapcore.Field) zapcore.Core
+// With([]zapcore.Field) zapcore.Core
 func (r_ *MockCoreMockRecorder) With(arg interface{}) MockCoreWithCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "With", reflect.TypeOf((*MockCore)(nil).With), arg)
@@ -179,7 +179,7 @@ func (c_ MockCoreWithCall) Return(res0 zapcore.Core) MockCoreWithCall {
 	return c_
 }
 
-//   Write(zapcore.Entry, []zapcore.Field) error
+// Write(zapcore.Entry, []zapcore.Field) error
 func (r_ *MockCoreMockRecorder) Write(arg interface{}, arg2 interface{}) MockCoreWriteCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "Write", reflect.TypeOf((*MockCore)(nil).Write), arg, arg2)

@@ -33,7 +33,7 @@ func (m_ *MockBaz) Qux() string {
 // MockBazMockRecorder is the mock recorder for MockBaz.
 type MockBazMockRecorder MockBaz
 
-//   Qux() string
+// Qux() string
 func (r_ *MockBazMockRecorder) Qux() MockBazQuxCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "Qux", reflect.TypeOf((*MockBaz)(nil).Qux))

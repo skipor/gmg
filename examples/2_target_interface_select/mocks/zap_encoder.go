@@ -223,7 +223,7 @@ func (m_ *MockZapEncoder) OpenNamespace(key string) {
 // MockZapEncoderMockRecorder is the mock recorder for MockZapEncoder.
 type MockZapEncoderMockRecorder MockZapEncoder
 
-//   AddArray(key string, marshaler zapcore.ArrayMarshaler) error
+// AddArray(key string, marshaler zapcore.ArrayMarshaler) error
 func (r_ *MockZapEncoderMockRecorder) AddArray(key interface{}, marshaler interface{}) MockZapEncoderAddArrayCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddArray", reflect.TypeOf((*MockZapEncoder)(nil).AddArray), key, marshaler)
@@ -251,7 +251,7 @@ func (c_ MockZapEncoderAddArrayCall) Return(res0 error) MockZapEncoderAddArrayCa
 	return c_
 }
 
-//   AddBinary(key string, value []byte)
+// AddBinary(key string, value []byte)
 func (r_ *MockZapEncoderMockRecorder) AddBinary(key interface{}, value interface{}) MockZapEncoderAddBinaryCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddBinary", reflect.TypeOf((*MockZapEncoder)(nil).AddBinary), key, value)
@@ -273,7 +273,7 @@ func (c_ MockZapEncoderAddBinaryCall) Do(f func(key string, value []byte)) MockZ
 	return c_
 }
 
-//   AddBool(key string, value bool)
+// AddBool(key string, value bool)
 func (r_ *MockZapEncoderMockRecorder) AddBool(key interface{}, value interface{}) MockZapEncoderAddBoolCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddBool", reflect.TypeOf((*MockZapEncoder)(nil).AddBool), key, value)
@@ -295,7 +295,7 @@ func (c_ MockZapEncoderAddBoolCall) Do(f func(key string, value bool)) MockZapEn
 	return c_
 }
 
-//   AddByteString(key string, value []byte)
+// AddByteString(key string, value []byte)
 func (r_ *MockZapEncoderMockRecorder) AddByteString(key interface{}, value interface{}) MockZapEncoderAddByteStringCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddByteString", reflect.TypeOf((*MockZapEncoder)(nil).AddByteString), key, value)
@@ -317,7 +317,7 @@ func (c_ MockZapEncoderAddByteStringCall) Do(f func(key string, value []byte)) M
 	return c_
 }
 
-//   AddComplex128(key string, value complex128)
+// AddComplex128(key string, value complex128)
 func (r_ *MockZapEncoderMockRecorder) AddComplex128(key interface{}, value interface{}) MockZapEncoderAddComplex128Call {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddComplex128", reflect.TypeOf((*MockZapEncoder)(nil).AddComplex128), key, value)
@@ -339,7 +339,7 @@ func (c_ MockZapEncoderAddComplex128Call) Do(f func(key string, value complex128
 	return c_
 }
 
-//   AddComplex64(key string, value complex64)
+// AddComplex64(key string, value complex64)
 func (r_ *MockZapEncoderMockRecorder) AddComplex64(key interface{}, value interface{}) MockZapEncoderAddComplex64Call {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddComplex64", reflect.TypeOf((*MockZapEncoder)(nil).AddComplex64), key, value)
@@ -361,7 +361,7 @@ func (c_ MockZapEncoderAddComplex64Call) Do(f func(key string, value complex64))
 	return c_
 }
 
-//   AddDuration(key string, value time.Duration)
+// AddDuration(key string, value time.Duration)
 func (r_ *MockZapEncoderMockRecorder) AddDuration(key interface{}, value interface{}) MockZapEncoderAddDurationCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddDuration", reflect.TypeOf((*MockZapEncoder)(nil).AddDuration), key, value)
@@ -383,7 +383,7 @@ func (c_ MockZapEncoderAddDurationCall) Do(f func(key string, value time.Duratio
 	return c_
 }
 
-//   AddFloat32(key string, value float32)
+// AddFloat32(key string, value float32)
 func (r_ *MockZapEncoderMockRecorder) AddFloat32(key interface{}, value interface{}) MockZapEncoderAddFloat32Call {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddFloat32", reflect.TypeOf((*MockZapEncoder)(nil).AddFloat32), key, value)
@@ -405,7 +405,7 @@ func (c_ MockZapEncoderAddFloat32Call) Do(f func(key string, value float32)) Moc
 	return c_
 }
 
-//   AddFloat64(key string, value float64)
+// AddFloat64(key string, value float64)
 func (r_ *MockZapEncoderMockRecorder) AddFloat64(key interface{}, value interface{}) MockZapEncoderAddFloat64Call {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddFloat64", reflect.TypeOf((*MockZapEncoder)(nil).AddFloat64), key, value)
@@ -427,7 +427,7 @@ func (c_ MockZapEncoderAddFloat64Call) Do(f func(key string, value float64)) Moc
 	return c_
 }
 
-//   AddInt(key string, value int)
+// AddInt(key string, value int)
 func (r_ *MockZapEncoderMockRecorder) AddInt(key interface{}, value interface{}) MockZapEncoderAddIntCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddInt", reflect.TypeOf((*MockZapEncoder)(nil).AddInt), key, value)
@@ -449,7 +449,7 @@ func (c_ MockZapEncoderAddIntCall) Do(f func(key string, value int)) MockZapEnco
 	return c_
 }
 
-//   AddInt16(key string, value int16)
+// AddInt16(key string, value int16)
 func (r_ *MockZapEncoderMockRecorder) AddInt16(key interface{}, value interface{}) MockZapEncoderAddInt16Call {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddInt16", reflect.TypeOf((*MockZapEncoder)(nil).AddInt16), key, value)
@@ -471,7 +471,7 @@ func (c_ MockZapEncoderAddInt16Call) Do(f func(key string, value int16)) MockZap
 	return c_
 }
 
-//   AddInt32(key string, value int32)
+// AddInt32(key string, value int32)
 func (r_ *MockZapEncoderMockRecorder) AddInt32(key interface{}, value interface{}) MockZapEncoderAddInt32Call {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddInt32", reflect.TypeOf((*MockZapEncoder)(nil).AddInt32), key, value)
@@ -493,7 +493,7 @@ func (c_ MockZapEncoderAddInt32Call) Do(f func(key string, value int32)) MockZap
 	return c_
 }
 
-//   AddInt64(key string, value int64)
+// AddInt64(key string, value int64)
 func (r_ *MockZapEncoderMockRecorder) AddInt64(key interface{}, value interface{}) MockZapEncoderAddInt64Call {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddInt64", reflect.TypeOf((*MockZapEncoder)(nil).AddInt64), key, value)
@@ -515,7 +515,7 @@ func (c_ MockZapEncoderAddInt64Call) Do(f func(key string, value int64)) MockZap
 	return c_
 }
 
-//   AddInt8(key string, value int8)
+// AddInt8(key string, value int8)
 func (r_ *MockZapEncoderMockRecorder) AddInt8(key interface{}, value interface{}) MockZapEncoderAddInt8Call {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddInt8", reflect.TypeOf((*MockZapEncoder)(nil).AddInt8), key, value)
@@ -537,7 +537,7 @@ func (c_ MockZapEncoderAddInt8Call) Do(f func(key string, value int8)) MockZapEn
 	return c_
 }
 
-//   AddObject(key string, marshaler zapcore.ObjectMarshaler) error
+// AddObject(key string, marshaler zapcore.ObjectMarshaler) error
 func (r_ *MockZapEncoderMockRecorder) AddObject(key interface{}, marshaler interface{}) MockZapEncoderAddObjectCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddObject", reflect.TypeOf((*MockZapEncoder)(nil).AddObject), key, marshaler)
@@ -565,7 +565,7 @@ func (c_ MockZapEncoderAddObjectCall) Return(res0 error) MockZapEncoderAddObject
 	return c_
 }
 
-//   AddReflected(key string, value interface{}) error
+// AddReflected(key string, value interface{}) error
 func (r_ *MockZapEncoderMockRecorder) AddReflected(key interface{}, value interface{}) MockZapEncoderAddReflectedCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddReflected", reflect.TypeOf((*MockZapEncoder)(nil).AddReflected), key, value)
@@ -593,7 +593,7 @@ func (c_ MockZapEncoderAddReflectedCall) Return(res0 error) MockZapEncoderAddRef
 	return c_
 }
 
-//   AddString(key string, value string)
+// AddString(key string, value string)
 func (r_ *MockZapEncoderMockRecorder) AddString(key interface{}, value interface{}) MockZapEncoderAddStringCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddString", reflect.TypeOf((*MockZapEncoder)(nil).AddString), key, value)
@@ -615,7 +615,7 @@ func (c_ MockZapEncoderAddStringCall) Do(f func(key string, value string)) MockZ
 	return c_
 }
 
-//   AddTime(key string, value time.Time)
+// AddTime(key string, value time.Time)
 func (r_ *MockZapEncoderMockRecorder) AddTime(key interface{}, value interface{}) MockZapEncoderAddTimeCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddTime", reflect.TypeOf((*MockZapEncoder)(nil).AddTime), key, value)
@@ -637,7 +637,7 @@ func (c_ MockZapEncoderAddTimeCall) Do(f func(key string, value time.Time)) Mock
 	return c_
 }
 
-//   AddUint(key string, value uint)
+// AddUint(key string, value uint)
 func (r_ *MockZapEncoderMockRecorder) AddUint(key interface{}, value interface{}) MockZapEncoderAddUintCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddUint", reflect.TypeOf((*MockZapEncoder)(nil).AddUint), key, value)
@@ -659,7 +659,7 @@ func (c_ MockZapEncoderAddUintCall) Do(f func(key string, value uint)) MockZapEn
 	return c_
 }
 
-//   AddUint16(key string, value uint16)
+// AddUint16(key string, value uint16)
 func (r_ *MockZapEncoderMockRecorder) AddUint16(key interface{}, value interface{}) MockZapEncoderAddUint16Call {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddUint16", reflect.TypeOf((*MockZapEncoder)(nil).AddUint16), key, value)
@@ -681,7 +681,7 @@ func (c_ MockZapEncoderAddUint16Call) Do(f func(key string, value uint16)) MockZ
 	return c_
 }
 
-//   AddUint32(key string, value uint32)
+// AddUint32(key string, value uint32)
 func (r_ *MockZapEncoderMockRecorder) AddUint32(key interface{}, value interface{}) MockZapEncoderAddUint32Call {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddUint32", reflect.TypeOf((*MockZapEncoder)(nil).AddUint32), key, value)
@@ -703,7 +703,7 @@ func (c_ MockZapEncoderAddUint32Call) Do(f func(key string, value uint32)) MockZ
 	return c_
 }
 
-//   AddUint64(key string, value uint64)
+// AddUint64(key string, value uint64)
 func (r_ *MockZapEncoderMockRecorder) AddUint64(key interface{}, value interface{}) MockZapEncoderAddUint64Call {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddUint64", reflect.TypeOf((*MockZapEncoder)(nil).AddUint64), key, value)
@@ -725,7 +725,7 @@ func (c_ MockZapEncoderAddUint64Call) Do(f func(key string, value uint64)) MockZ
 	return c_
 }
 
-//   AddUint8(key string, value uint8)
+// AddUint8(key string, value uint8)
 func (r_ *MockZapEncoderMockRecorder) AddUint8(key interface{}, value interface{}) MockZapEncoderAddUint8Call {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddUint8", reflect.TypeOf((*MockZapEncoder)(nil).AddUint8), key, value)
@@ -747,7 +747,7 @@ func (c_ MockZapEncoderAddUint8Call) Do(f func(key string, value uint8)) MockZap
 	return c_
 }
 
-//   AddUintptr(key string, value uintptr)
+// AddUintptr(key string, value uintptr)
 func (r_ *MockZapEncoderMockRecorder) AddUintptr(key interface{}, value interface{}) MockZapEncoderAddUintptrCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AddUintptr", reflect.TypeOf((*MockZapEncoder)(nil).AddUintptr), key, value)
@@ -769,7 +769,7 @@ func (c_ MockZapEncoderAddUintptrCall) Do(f func(key string, value uintptr)) Moc
 	return c_
 }
 
-//   Clone() zapcore.Encoder
+// Clone() zapcore.Encoder
 func (r_ *MockZapEncoderMockRecorder) Clone() MockZapEncoderCloneCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "Clone", reflect.TypeOf((*MockZapEncoder)(nil).Clone))
@@ -797,7 +797,7 @@ func (c_ MockZapEncoderCloneCall) Return(res0 zapcore.Encoder) MockZapEncoderClo
 	return c_
 }
 
-//   EncodeEntry(zapcore.Entry, []zapcore.Field) (*buffer.Buffer, error)
+// EncodeEntry(zapcore.Entry, []zapcore.Field) (*buffer.Buffer, error)
 func (r_ *MockZapEncoderMockRecorder) EncodeEntry(arg interface{}, arg2 interface{}) MockZapEncoderEncodeEntryCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "EncodeEntry", reflect.TypeOf((*MockZapEncoder)(nil).EncodeEntry), arg, arg2)
@@ -825,7 +825,7 @@ func (c_ MockZapEncoderEncodeEntryCall) Return(res0 *buffer.Buffer, res1 error) 
 	return c_
 }
 
-//   OpenNamespace(key string)
+// OpenNamespace(key string)
 func (r_ *MockZapEncoderMockRecorder) OpenNamespace(key interface{}) MockZapEncoderOpenNamespaceCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "OpenNamespace", reflect.TypeOf((*MockZapEncoder)(nil).OpenNamespace), key)

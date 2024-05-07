@@ -32,7 +32,7 @@ func (m_ *MockSecond) Two() {
 // MockSecondMockRecorder is the mock recorder for MockSecond.
 type MockSecondMockRecorder MockSecond
 
-//   Two()
+// Two()
 func (r_ *MockSecondMockRecorder) Two() MockSecondTwoCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "Two", reflect.TypeOf((*MockSecond)(nil).Two))

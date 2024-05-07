@@ -32,7 +32,7 @@ func (m_ *MockFirst) One() {
 // MockFirstMockRecorder is the mock recorder for MockFirst.
 type MockFirstMockRecorder MockFirst
 
-//   One()
+// One()
 func (r_ *MockFirstMockRecorder) One() MockFirstOneCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "One", reflect.TypeOf((*MockFirst)(nil).One))

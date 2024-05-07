@@ -34,7 +34,7 @@ func (m_ *MockReader) Read(p []byte) (n int, err error) {
 // MockReaderMockRecorder is the mock recorder for MockReader.
 type MockReaderMockRecorder MockReader
 
-//   Read(p []byte) (n int, err error)
+// Read(p []byte) (n int, err error)
 func (r_ *MockReaderMockRecorder) Read(p interface{}) MockReaderReadCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "Read", reflect.TypeOf((*MockReader)(nil).Read), p)
