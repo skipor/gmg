@@ -32,7 +32,7 @@ func (m_ *MockPrimary1) P1() {
 // MockPrimary1MockRecorder is the mock recorder for MockPrimary1.
 type MockPrimary1MockRecorder MockPrimary1
 
-//   P1()
+// P1()
 func (r_ *MockPrimary1MockRecorder) P1() MockPrimary1P1Call {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "P1", reflect.TypeOf((*MockPrimary1)(nil).P1))

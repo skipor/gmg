@@ -34,7 +34,7 @@ func (m_ *MockWriter) Write(p []byte) (n int, err error) {
 // MockWriterMockRecorder is the mock recorder for MockWriter.
 type MockWriterMockRecorder MockWriter
 
-//   Write(p []byte) (n int, err error)
+// Write(p []byte) (n int, err error)
 func (r_ *MockWriterMockRecorder) Write(p interface{}) MockWriterWriteCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "Write", reflect.TypeOf((*MockWriter)(nil).Write), p)

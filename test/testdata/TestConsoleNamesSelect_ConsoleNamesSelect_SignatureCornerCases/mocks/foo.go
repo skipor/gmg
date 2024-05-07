@@ -140,7 +140,7 @@ func (m_ *MockFoo) WellKnownNamesResults() (context.Context, *testing.T, error) 
 // MockFooMockRecorder is the mock recorder for MockFoo.
 type MockFooMockRecorder MockFoo
 
-//   AfterOtherPackagesNamesArgs(context int)
+// AfterOtherPackagesNamesArgs(context int)
 func (r_ *MockFooMockRecorder) AfterOtherPackagesNamesArgs(context2 interface{}) MockFooAfterOtherPackagesNamesArgsCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AfterOtherPackagesNamesArgs", reflect.TypeOf((*MockFoo)(nil).AfterOtherPackagesNamesArgs), context2)
@@ -162,7 +162,7 @@ func (c_ MockFooAfterOtherPackagesNamesArgsCall) Do(f func(context2 int)) MockFo
 	return c_
 }
 
-//   AfterOtherPackagesNamesResults() (context int)
+// AfterOtherPackagesNamesResults() (context int)
 func (r_ *MockFooMockRecorder) AfterOtherPackagesNamesResults() MockFooAfterOtherPackagesNamesResultsCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "AfterOtherPackagesNamesResults", reflect.TypeOf((*MockFoo)(nil).AfterOtherPackagesNamesResults))
@@ -190,7 +190,7 @@ func (c_ MockFooAfterOtherPackagesNamesResultsCall) Return(context2 int) MockFoo
 	return c_
 }
 
-//   BeforeOtherPackagesNamesArgs(testing int)
+// BeforeOtherPackagesNamesArgs(testing int)
 func (r_ *MockFooMockRecorder) BeforeOtherPackagesNamesArgs(testing2 interface{}) MockFooBeforeOtherPackagesNamesArgsCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "BeforeOtherPackagesNamesArgs", reflect.TypeOf((*MockFoo)(nil).BeforeOtherPackagesNamesArgs), testing2)
@@ -212,7 +212,7 @@ func (c_ MockFooBeforeOtherPackagesNamesArgsCall) Do(f func(testing2 int)) MockF
 	return c_
 }
 
-//   BeforeOtherPackagesNamesResults() (testing int)
+// BeforeOtherPackagesNamesResults() (testing int)
 func (r_ *MockFooMockRecorder) BeforeOtherPackagesNamesResults() MockFooBeforeOtherPackagesNamesResultsCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "BeforeOtherPackagesNamesResults", reflect.TypeOf((*MockFoo)(nil).BeforeOtherPackagesNamesResults))
@@ -240,7 +240,7 @@ func (c_ MockFooBeforeOtherPackagesNamesResultsCall) Return(testing2 int) MockFo
 	return c_
 }
 
-//   NamedArgsAndResults(a int) (b int)
+// NamedArgsAndResults(a int) (b int)
 func (r_ *MockFooMockRecorder) NamedArgsAndResults(a interface{}) MockFooNamedArgsAndResultsCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "NamedArgsAndResults", reflect.TypeOf((*MockFoo)(nil).NamedArgsAndResults), a)
@@ -268,7 +268,7 @@ func (c_ MockFooNamedArgsAndResultsCall) Return(b int) MockFooNamedArgsAndResult
 	return c_
 }
 
-//   NoArgsAndResults()
+// NoArgsAndResults()
 func (r_ *MockFooMockRecorder) NoArgsAndResults() MockFooNoArgsAndResultsCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "NoArgsAndResults", reflect.TypeOf((*MockFoo)(nil).NoArgsAndResults))
@@ -290,7 +290,7 @@ func (c_ MockFooNoArgsAndResultsCall) Do(f func()) MockFooNoArgsAndResultsCall {
 	return c_
 }
 
-//   OnlyVariadicArgs(as ...int)
+// OnlyVariadicArgs(as ...int)
 func (r_ *MockFooMockRecorder) OnlyVariadicArgs(as ...interface{}) MockFooOnlyVariadicArgsCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "OnlyVariadicArgs", reflect.TypeOf((*MockFoo)(nil).OnlyVariadicArgs), as...)
@@ -312,7 +312,7 @@ func (c_ MockFooOnlyVariadicArgsCall) Do(f func(as ...int)) MockFooOnlyVariadicA
 	return c_
 }
 
-//   ReservedArgNames(c int, r int, m int, res int, call int, reflect int, gomock int)
+// ReservedArgNames(c int, r int, m int, res int, call int, reflect int, gomock int)
 func (r_ *MockFooMockRecorder) ReservedArgNames(c interface{}, r interface{}, m interface{}, res interface{}, call interface{}, reflect2 interface{}, gomock2 interface{}) MockFooReservedArgNamesCall {
 	r_.ctrl.T.Helper()
 	call2 := r_.ctrl.RecordCallWithMethodType(r_.mock(), "ReservedArgNames", reflect.TypeOf((*MockFoo)(nil).ReservedArgNames), c, r, m, res, call, reflect2, gomock2)
@@ -334,7 +334,7 @@ func (c_ MockFooReservedArgNamesCall) Do(f func(c int, r int, m int, res int, ca
 	return c_
 }
 
-//   ReservedResultNames() (c int, r int, m int, res int, call int, reflect int, gomock int)
+// ReservedResultNames() (c int, r int, m int, res int, call int, reflect int, gomock int)
 func (r_ *MockFooMockRecorder) ReservedResultNames() MockFooReservedResultNamesCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "ReservedResultNames", reflect.TypeOf((*MockFoo)(nil).ReservedResultNames))
@@ -362,7 +362,7 @@ func (c_ MockFooReservedResultNamesCall) Return(c int, r int, m int, res int, ca
 	return c_
 }
 
-//   UnderscoreArgsAndResults(_ int) (_ int)
+// UnderscoreArgsAndResults(_ int) (_ int)
 func (r_ *MockFooMockRecorder) UnderscoreArgsAndResults(arg interface{}) MockFooUnderscoreArgsAndResultsCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "UnderscoreArgsAndResults", reflect.TypeOf((*MockFoo)(nil).UnderscoreArgsAndResults), arg)
@@ -390,7 +390,7 @@ func (c_ MockFooUnderscoreArgsAndResultsCall) Return(res0 int) MockFooUnderscore
 	return c_
 }
 
-//   VariadicArgs(f string, as ...int)
+// VariadicArgs(f string, as ...int)
 func (r_ *MockFooMockRecorder) VariadicArgs(f interface{}, as ...interface{}) MockFooVariadicArgsCall {
 	r_.ctrl.T.Helper()
 	args_ := append([]interface{}{f}, as...)
@@ -413,7 +413,7 @@ func (c_ MockFooVariadicArgsCall) Do(f func(f string, as ...int)) MockFooVariadi
 	return c_
 }
 
-//   WellKnownNamesArgs(context.Context, *testing.T, error)
+// WellKnownNamesArgs(context.Context, *testing.T, error)
 func (r_ *MockFooMockRecorder) WellKnownNamesArgs(arg interface{}, arg2 interface{}, arg3 interface{}) MockFooWellKnownNamesArgsCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "WellKnownNamesArgs", reflect.TypeOf((*MockFoo)(nil).WellKnownNamesArgs), arg, arg2, arg3)
@@ -435,7 +435,7 @@ func (c_ MockFooWellKnownNamesArgsCall) Do(f func(arg context.Context, arg2 *tes
 	return c_
 }
 
-//   WellKnownNamesResults() (context.Context, *testing.T, error)
+// WellKnownNamesResults() (context.Context, *testing.T, error)
 func (r_ *MockFooMockRecorder) WellKnownNamesResults() MockFooWellKnownNamesResultsCall {
 	r_.ctrl.T.Helper()
 	call := r_.ctrl.RecordCallWithMethodType(r_.mock(), "WellKnownNamesResults", reflect.TypeOf((*MockFoo)(nil).WellKnownNamesResults))
